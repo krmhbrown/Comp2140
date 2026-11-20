@@ -123,7 +123,9 @@ public class Order {
                 //TODO: call product.updateStock(quantity) once connected to Product
             }
             //Cancellation message to the customer (SR-7)
-            System.out.println("Your order " + orderID + " has been cancelled."); // NEW
+                        System.out.println("Your order " + orderID + " has been cancelled.");
+            System.out.println("Cancelled items: " + items + ", Delivery Address: " + deliveryAddress
+                    + ", Payment Method: " + paymentMethod);
             return true;
         }
         return false;
