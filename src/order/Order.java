@@ -20,6 +20,7 @@ public class Order {
     private String paymentStatus; //status of payment (e.g., Paid, Unpaid, Pay on Delivery)
     private String orderStatus; //current status of the order (e.g., Awaiting Payment, Order Confirmed, Order Packaging, Order Entered Delivery Management Process, Order Cancelled)
     private ArrayList<String> statusHistory; //all statuses the order has gone through
+        private static int nextOrderNumber = 1; //ADD TO CLASS DIAGRAM! shared by all orders so each ID is unique
 
     // Constructor
  public Order(String customerID, HashMap<String, Integer> items, String deliveryAddress, String paymentMethod, String contactNumber) {
@@ -47,7 +48,7 @@ public class Order {
             return false;
         }
         // The generation of order Id
-        this.orderID = "ORD" + System.currentTimeMillis();
+        this.orderID = String.format("ORD%04d", nextOrderNumber++);
         orderDate = LocalDateTime.now();
         //Bank transfer orders require payment confirmation before order confirmation
         if (paymentMethod.equals("Bank Transfer")) {
