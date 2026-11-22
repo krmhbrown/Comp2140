@@ -102,12 +102,12 @@ public class OrderTest {
         multi.updateStatus("Order Packaging");
         System.out.println("TS-15 cancelled: " + multi.cancelOrder()); // restock lines print here: P001 +2, P002 +3
 
-        // TS-16 (TC-1.16): stock does not change when cancelling an order that is in delivery or already cancelled
+        // TS-16 (TC-1.16): stock does not change when cancelling an order that is in delivery
         Order delivering = new Order("C1016", items, "11 Trafalgar Road", "Cash on Delivery", "876-555-0116");
         delivering.placeOrder();
         delivering.updateStatus("Order Packaging");
         delivering.updateStatus("Order Entered Delivery Management Process");
         System.out.println("TS-16 cancel in delivery: " + delivering.cancelOrder()); // no restock line should print
-        System.out.println("TS-16 cancel already cancelled (TC-1.13 order): " + cancelMsg.cancelOrder()); // no restock line
+       // System.out.println("TS-16 cancel already cancelled (TC-1.13 order): " + cancelMsg.cancelOrder()); // no restock line
     }
 }

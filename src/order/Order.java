@@ -1,5 +1,5 @@
 //author: Arriyanna Grant
-//date: 2/15/2024
+//date: 1/22/2026
 //This is the order management class.
 package order;
 import java.time.LocalDateTime;
@@ -18,7 +18,7 @@ public class Order {
     private Double totalAmount; //calculated based on items
     private String paymentMethod; //method of payment
     private String paymentStatus; //status of payment (e.g., Paid, Unpaid, Pay on Delivery)
-    private String orderStatus; //current status of the order (e.g., Awaiting Payment, Order Confirmed, Order Packaging, Order Entered Delivery Management Process, Order Cancelled)
+    private String orderStatus; //current status of the order (e.g., Awaiting Payment, Order Confirmed, Order Packaging, Order Entered Delivery Management Process, Cancelled)
     private ArrayList<String> statusHistory; //all statuses the order has gone through
         private static int nextOrderNumber = 1; //ADD TO CLASS DIAGRAM! shared by all orders so each ID is unique
 
@@ -61,13 +61,11 @@ public class Order {
             paymentStatus = "Unpaid";
         }
         //calculate the total amount for the order based on the items and their quantities
-        this.totalAmount = calculateTotal();
-        generateInvoice(); // NEW: the customer gets an invoice once the order is placed (SR-3)
+        this.totalAmount = calculateTotal(); 
         return true;
     }
     
-    //The order invoice
-        //The order invoice
+    //The order invoic
     public void generateInvoice() {
         // The invoice can only be generated if the order is in a processing stage
         if (isProcessingStage()) { 
@@ -85,8 +83,8 @@ public class Order {
             System.out.println("Delivery Address: " + deliveryAddress);
             System.out.println("Contact Number: " + contactNumber);
             System.out.println("Total Amount: $" + totalAmount);
-            System.out.println("Payment Method: " + paymentMethod); // NEW: TS-5 checks payment info
-            System.out.println("Payment Status: " + paymentStatus); // NEW
+            System.out.println("Payment Method: " + paymentMethod); 
+            System.out.println("Payment Status: " + paymentStatus); 
         } else {
             System.out.println("Invoice unavailable.");
         }
@@ -109,7 +107,7 @@ public class Order {
 
     //Returns the status history of the order for tracking purposes
     public ArrayList<String> trackOrder() {
-        return statusHistory; // TODO
+        return statusHistory; 
     }
 
     //Allows order cancellation if the order is in a processing stage (Awaiting Payment, Order Confirmed, Order Packaging)
@@ -120,7 +118,6 @@ public class Order {
             //Cancelled items are returned to inventory stock 
             for (String productID : items.keySet()) { // NEW
                 System.out.println("Restock " + productID + ": +" + items.get(productID));
-                //TODO: call product.updateStock(quantity) once connected to Product
             }
             //Cancellation message to the customer (SR-7)
                         System.out.println("Your order " + orderID + " has been cancelled.");
@@ -137,9 +134,9 @@ public class Order {
 
     //Confirms payment for bank transfer orders that are awaiting payment and updates the order status to "Order Confirmed"
     public void confirmPayment() {
-        if ("Awaiting Payment".equals(orderStatus)) { // CHANGED: was paymentStatus.equals("Unpaid")
+        if ("Awaiting Payment".equals(orderStatus)) { 
             paymentStatus = "Paid";
-            updateStatus("Order Confirmed"); // CHANGED: was "ORDER_CONFIRMED"
+            updateStatus("Order Confirmed"); 
         }
     }
 
