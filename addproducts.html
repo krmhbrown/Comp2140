@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peak Finds – Add Product</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Poppins:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green: #3f5e4f; --green-dark: #2f4a3d; --green-light: #e6ede1;
+      --bg: #f4f6f1; --border: #bfcdb8; --text: #25372e; --muted: #6b7a70;
+      --heading-font: 'Playfair Display', serif;
+      --body-font: 'Poppins', sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--body-font); color: var(--text); background: var(--bg); min-height: 100vh; }
+    header {
+      background: var(--green); color: white; padding: 18px 40px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+    }
+    header h1 { font-family: var(--heading-font); margin: 0; font-size: 28px; font-weight: 600; letter-spacing: 1px; }
+    .brand { display: flex; align-items: center; color: white; text-decoration: none; }
+    .brand img { height: 44px; display: block; }
+    .brand img + h1 { display: none; }
+    nav a { color: white; text-decoration: none; margin-left: 20px; font-size: 14px; opacity: .85; }
+    nav a:hover { opacity: 1; border-bottom: 2px solid white; padding-bottom: 2px; }
+    .card {
+      background: white; max-width: 850px; margin: 40px auto; padding: 35px 40px;
+      border-radius: 18px; border: 1px solid var(--border);
+    }
+    .card h2 { font-family: var(--heading-font); color: var(--green); margin-top: 0; font-size: 30px; font-weight: 600; }
+    .subtitle { margin-top: -10px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px; }
+    .full { grid-column: 1 / -1; }
+    label { display: block; font-weight: 500; margin-bottom: 6px; font-size: 14px; }
+    input, select, textarea {
+      width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+      font-family: inherit; font-size: 15px; background: var(--bg); color: var(--text);
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--green); background: white; }
+    textarea { min-height: 90px; resize: vertical; }
+    .price-wrap { position: relative; }
+    .price-wrap span { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 500; }
+    .price-wrap input { padding-left: 40px; }
+    .price-preview { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    .price-preview b { color: var(--green); }
+    .photo-box { border: 2px dashed var(--border); border-radius: 12px; padding: 20px; text-align: center; background: var(--bg); }
+    #preview { max-width: 180px; max-height: 180px; border-radius: 10px; margin: 12px auto 0; display: none; }
+    .private { background: var(--green-light); border: 1.5px dashed var(--green); border-radius: 12px; padding: 16px; }
+    .private p { margin: 0 0 10px; font-size: 13px; color: var(--green-dark); font-weight: 500; }
+    button {
+      margin-top: 25px; width: 100%; padding: 14px; background: var(--green); color: white;
+      border: none; border-radius: 30px; font-family: inherit; font-size: 16px; font-weight: 500; cursor: pointer; transition: .2s;
+    }
+    button:hover { background: var(--green-dark); transform: translateY(-2px); }
+    .notice { display: none; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 14px; }
+    .notice.ok { display: block; background: var(--green-light); border: 1px solid var(--green); color: var(--green-dark); }
+    @media (max-width: 600px) {
+      .grid { grid-template-columns: 1fr; }
+      .card { margin: 20px; padding: 25px; }
+      header { padding: 16px 20px; }
+      nav a { margin-left: 0; margin-right: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="manageproducts.html" class="brand"><img src="images/logo.png" alt="Peak Finds" onerror="this.remove()"><h1>Peak Finds</h1></a>
+    <nav>
+      <a href="addproducts.html">Add Product</a>
+      <a href="manageproducts.html">Manage Products</a>
+      <a href="catalogue.html">View Shop</a>
+    </nav>
+  </header>
+
+  <div class="card">
+    <h2>Add a New Product</h2>
+    <p class="subtitle">Fill in every field to add a bag to the catalogue.</p>
+    <div class="notice" id="notice" role="status"></div>
+
+    <form id="productForm">
+      <div class="grid">
+        <div>
+          <label>Name</label>
+          <input type="text" id="name" placeholder="Juicy Crossbody Bag" required>
+        </div>
+        <div>
+          <label>Price</label>
+          <div class="price-wrap">
+            <span>J$</span>
+            <input type="number" id="price" min="0" step="0.01" placeholder="4500.00" required>
+          </div>
+          <div class="price-preview">Customers will see: <b id="pricePreview">J$0.00</b></div>
+        </div>
+        <div>
+          <label>Colour</label>
+          <input type="text" id="colour" placeholder="Black" required>
+        </div>
+        <div>
+          <label>Category</label>
+          <select id="category" required>
+            <option value="">-- Choose --</option>
+            <option>Backpack</option>
+            <option>Shoulder Bag</option>
+            <option>Crossbody Bag</option>
+            <option>Handbag</option>
+            <option>Tote Bag</option>
+          </select>
+        </div>
+        <div class="full">
+          <label>Description</label>
+          <textarea id="description" placeholder="Material, size, special features..." required></textarea>
+        </div>
+        <div class="full">
+          <label>Photo</label>
+          <div class="photo-box">
+            <input type="file" id="photo" accept="image/*" required>
+            <img id="preview" alt="Photo preview">
+          </div>
+        </div>
+        <div class="full">
+          <label>Quantity in Stock</label>
+          <input type="number" id="quantity" min="0" step="1" placeholder="10" required>
+        </div>
+        <div class="full private">
+          <p>🔒 Owner only – hidden from customers</p>
+          <div class="grid">
+            <div>
+                            <label>Supplier ID(s)</label>
+              <input type="text" id="supplierIds" placeholder="S-001, S-002" required>
+              <div class="price-preview">One or more IDs, separated by commas.</div>
+            </div>
+            <div>
+              <label>Reorder Level</label>
+              <input type="number" id="reorderLevel" min="0" step="1" placeholder="3" required>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button type="submit">Save Product</button>
+    </form>
+  </div>
+
+  <script>
+    // Show the price as Jamaican currency while typing
+    const priceInput = document.getElementById('price');
+    const pricePreview = document.getElementById('pricePreview');
+    priceInput.addEventListener('input', function () {
+      const value = parseFloat(this.value) || 0;
+      pricePreview.textContent = value.toLocaleString('en-JM', { style: 'currency', currency: 'JMD' });
+    });
+
+    // Show a preview of the uploaded photo
+    document.getElementById('photo').addEventListener('change', function () {
+      const file = this.files[0];
+      const preview = document.getElementById('preview');
+      if (file) {
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
+      }
+    });
+
+    // Save (SRS Feature 05, SR-1 and SR-4)
+    document.getElementById('productForm').addEventListener('submit', function (e) {
+      e.preventDefault();   // the browser has already checked that every required field is filled in
+      const notice = document.getElementById('notice');
+      notice.className = 'notice ok';
+      notice.textContent = 'Product saved. (Demo only - nothing is stored until the database is connected.)';
+      this.reset();
+      document.getElementById('preview').style.display = 'none';
+      document.getElementById('pricePreview').textContent = 'J$0.00';
+    });
+  </script>
+</body>
+</html>

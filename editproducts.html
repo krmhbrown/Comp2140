@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peak Finds – Edit Product</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Poppins:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --green: #3f5e4f; --green-dark: #2f4a3d; --green-light: #e6ede1;
+      --bg: #f4f6f1; --border: #bfcdb8; --text: #25372e; --muted: #6b7a70;
+      --heading-font: 'Playfair Display', serif;
+      --body-font: 'Poppins', sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--body-font); color: var(--text); background: var(--bg); min-height: 100vh; }
+    header {
+      background: var(--green); color: white; padding: 18px 40px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+    }
+    header h1 { font-family: var(--heading-font); margin: 0; font-size: 28px; font-weight: 600; letter-spacing: 1px; }
+    .brand { display: flex; align-items: center; color: white; text-decoration: none; }
+    .brand img { height: 44px; display: block; }
+    .brand img + h1 { display: none; }
+    nav a { color: white; text-decoration: none; margin-left: 20px; font-size: 14px; opacity: .85; }
+    nav a:hover { opacity: 1; border-bottom: 2px solid white; padding-bottom: 2px; }
+    .card {
+      background: white; max-width: 850px; margin: 40px auto; padding: 35px 40px;
+      border-radius: 18px; border: 1px solid var(--border);
+    }
+    .card h2 { font-family: var(--heading-font); color: var(--green); margin-top: 0; font-size: 30px; font-weight: 600; }
+    .subtitle { margin-top: -10px; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px; }
+    .full { grid-column: 1 / -1; }
+    label { display: block; font-weight: 500; margin-bottom: 6px; font-size: 14px; }
+    input, select, textarea {
+      width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+      font-family: inherit; font-size: 15px; background: var(--bg); color: var(--text);
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--green); background: white; }
+    textarea { min-height: 90px; resize: vertical; }
+    .price-wrap { position: relative; }
+    .price-wrap span { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 500; }
+    .price-wrap input { padding-left: 40px; }
+    .price-preview { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    .price-preview b { color: var(--green); }
+    .photo-box { border: 2px dashed var(--border); border-radius: 12px; padding: 20px; text-align: center; background: var(--bg); }
+    #preview { max-width: 180px; max-height: 180px; border-radius: 10px; margin: 12px auto 0; display: none; }
+    .private { background: var(--green-light); border: 1.5px dashed var(--green); border-radius: 12px; padding: 16px; }
+    .private p { margin: 0 0 10px; font-size: 13px; color: var(--green-dark); font-weight: 500; }
+    button {
+      margin-top: 25px; width: 100%; padding: 14px; background: var(--green); color: white;
+      border: none; border-radius: 30px; font-family: inherit; font-size: 16px; font-weight: 500; cursor: pointer; transition: .2s;
+    }
+    button:hover { background: var(--green-dark); transform: translateY(-2px); }
+    .btn-row { display: flex; gap: 12px; margin-top: 25px; }
+    .btn-row button { margin-top: 0; width: auto; flex: 2; }
+    .cancel-link { flex: 1; text-align: center; padding: 14px; border: 1.5px solid var(--border); border-radius: 30px; color: var(--text); text-decoration: none; background: white; font-size: 16px; font-weight: 500; }
+    .cancel-link:hover { background: var(--green-light); }
+    .notice { display: none; border-radius: 10px; padding: 10px 14px; margin-bottom: 14px; font-size: 14px; }
+    .notice.ok { display: block; background: var(--green-light); border: 1px solid var(--green); color: var(--green-dark); }
+    .notice.err { display: block; background: #fbe9e7; border: 1px solid #d9a39b; color: #8a2f22; }
+    .photo-note { font-size: 13px; color: var(--muted); margin: 0 0 10px; }
+    @media (max-width: 600px) {
+      .grid { grid-template-columns: 1fr; }
+      .card { margin: 20px; padding: 25px; }
+      header { padding: 16px 20px; }
+      nav a { margin-left: 0; margin-right: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="manageproducts.html" class="brand"><img src="images/logo.png" alt="Peak Finds" onerror="this.remove()"><h1>Peak Finds</h1></a>
+    <nav>
+      <a href="addproducts.html">Add Product</a>
+      <a href="manageproducts.html">Manage Products</a>
+      <a href="catalogue.html">View Shop</a>
+    </nav>
+  </header>
+
+  <div class="card">
+    <h2>Edit Product</h2>
+    <p class="subtitle">Product ID: <b id="productCode"></b>. Change any detail and save, or cancel to keep the product as it was.</p>
+    <div class="notice" id="notice" role="status"></div>
+
+    <form id="productForm">
+      <div class="grid">
+        <div>
+          <label>Name</label>
+          <input type="text" id="name" placeholder="Juicy Crossbody Bag" required>
+        </div>
+        <div>
+          <label>Price</label>
+          <div class="price-wrap">
+            <span>J$</span>
+            <input type="number" id="price" min="0" step="0.01" placeholder="4500.00" required>
+          </div>
+          <div class="price-preview">Customers will see: <b id="pricePreview">J$0.00</b></div>
+        </div>
+        <div>
+          <label>Colour</label>
+          <input type="text" id="colour" placeholder="Black" required>
+        </div>
+        <div>
+          <label>Category</label>
+          <select id="category" required>
+            <option value="">-- Choose --</option>
+            <option>Backpack</option>
+            <option>Shoulder Bag</option>
+            <option>Crossbody Bag</option>
+            <option>Handbag</option>
+            <option>Tote Bag</option>
+          </select>
+        </div>
+        <div class="full">
+          <label>Description</label>
+          <textarea id="description" placeholder="Material, size, special features..." required></textarea>
+        </div>
+        <div class="full">
+          <label>Photo</label>
+          <div class="photo-box">
+            <p class="photo-note">Current photo kept. Choose a file only if you want to replace it.</p>
+            <input type="file" id="photo" accept="image/*">
+            <img id="preview" alt="Photo preview">
+          </div>
+        </div>
+        <div class="full">
+          <label>Quantity in Stock</label>
+          <input type="number" id="quantity" min="0" step="1" placeholder="10" required>
+        </div>
+        <div class="full private">
+          <p>🔒 Owner only – hidden from customers</p>
+          <div class="grid">
+            <div>
+                            <label>Supplier ID(s)</label>
+              <input type="text" id="supplierIds" placeholder="S-001, S-002" required>
+              <div class="price-preview">One or more IDs, separated by commas.</div>
+            </div>
+            <div>
+              <label>Reorder Level</label>
+              <input type="number" id="reorderLevel" min="0" step="1" placeholder="3" required>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <a href="manageproducts.html" class="cancel-link">Cancel</a>
+        <button type="submit">Save Changes</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- The bags come from products.js for now. Later they come from the database. -->
+  <script src="products.js"></script>
+  <script>
+    // Show the price as Jamaican currency while typing
+    const priceInput = document.getElementById('price');
+    const pricePreview = document.getElementById('pricePreview');
+    priceInput.addEventListener('input', function () {
+      const value = parseFloat(this.value) || 0;
+      pricePreview.textContent = value.toLocaleString('en-JM', { style: 'currency', currency: 'JMD' });
+    });
+
+    // Show a preview of the uploaded photo
+    document.getElementById('photo').addEventListener('change', function () {
+      const file = this.files[0];
+      const preview = document.getElementById('preview');
+      if (file) {
+        preview.src = URL.createObjectURL(file);
+        preview.style.display = 'block';
+      }
+    });
+
+    // ----- Edit page logic -----
+    const params = new URLSearchParams(window.location.search);
+    const product = products.find(p => p.id === params.get("id")) || products[0];
+    const notice = document.getElementById("notice");
+    const form = document.getElementById("productForm");
+    const fields = ["name", "price", "colour", "category", "description", "quantity", "supplierId", "reorderLevel"];
+    const valueOf = {
+      name: product.name, price: product.price, colour: product.colour, category: product.category,
+      description: product.description, quantity: product.quantity, supplierId: product.supplierId,
+      reorderLevel: product.reorderLevel
+    };
+
+    // Show the product's current details (SRS Feature 05, SR-3)
+    document.getElementById("productCode").textContent = product.id;
+    fields.forEach(f => { document.getElementById(f).value = valueOf[f]; });
+    priceInput.dispatchEvent(new Event("input"));
+
+    // Save only when every required field is filled in (SR-3, SR-4)
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      const empty = fields.filter(f => String(document.getElementById(f).value).trim() === "");
+      if (empty.length > 0) {
+        notice.className = "notice err";
+        notice.textContent = "Please complete all required fields: " + empty.join(", ") + ".";
+        return;
+      }
+      // Demo only: the real save to the database is added when the page is connected to Spring Boot.
+      notice.className = "notice ok";
+      notice.textContent = "Changes saved. (Demo only - nothing is stored until the database is connected.)";
+    });
+  </script>
+</body>
+</html>
