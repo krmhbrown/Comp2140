@@ -1,0 +1,118 @@
+
+/* General styling for the entire webpage. */
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #faf7f7;
+    color: #333;
+}
+
+/* Styles the website's heading. */
+header {
+    background-color: #e8b7c8;
+    text-align: center;
+    padding: 25px;
+}
+
+/* Styles the Peak Finds name. */
+header h1 {
+    margin: 0;
+    font-size: 32px;
+}
+
+/* Styles the navigation bar. */
+nav {
+    background-color: #ffffff;
+    padding: 15px;
+    text-align: center;
+}
+
+/* Styles the navigation links. */
+nav a {
+    color: #333;
+    text-decoration: none;
+    margin: 10px;
+    font-weight: bold;
+}
+
+/* Changes link colours when the mouse hovers. */
+nav a:hover {
+    color: #c45a83;
+}
+
+/* Centres the main content on the page. */
+main {
+    max-width: 1000px;
+    margin: 20px auto;
+    padding: 15px;
+}
+
+/* Styles each customer section. */
+section {
+    background-color: white;
+    padding: 25px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+/* Styles section headings. */
+h2 {
+    color: #b74e77;
+}
+
+/* Styles buttons. */
+button {
+    background-color: #d989a9;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    margin: 5px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+/* Changes active button colour when hovered. */
+button:hover:not(:disabled) {
+    background-color: #bd6487;
+}
+
+/* Makes unfinished buttons appear disabled. */
+button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* Styles the payment method dropdown. */
+select {
+    padding: 10px;
+    margin: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* Styles the website footer. */
+footer {
+    background-color: #e8b7c8;
+    text-align: center;
+    padding: 15px;
+}
+
+/* Adjusts the layout for mobile phones. */
+@media (max-width: 600px) {
+
+    nav a {
+        display: inline-block;
+        margin: 8px;
+    }
+
+    main {
+        margin: 10px;
+        padding: 5px;
+    }
+
+    section {
+        padding: 15px;
+    }
+}
