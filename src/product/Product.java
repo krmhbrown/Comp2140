@@ -49,7 +49,7 @@ public class Product {
         if (!hasAllRequiredFields()) {
             return false;                          // refuse while a required field is empty
         }
-        productID = String.format("P-%03d", nextNumber++);
+        productID = String.format("P%03d", nextNumber++);
         isActive = true;
         return true;
     }
