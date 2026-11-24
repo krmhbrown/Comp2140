@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- Allows the browser to display text correctly. -->
+    <meta charset="UTF-8">
+
+    <!-- Makes the website responsive on phones and computers. -->
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <!-- Title displayed in the browser tab. -->
+    <title>Peak Finds - Orders</title>
+
+    <!-- Connects the HTML page to the CSS file. -->
+    <link rel="stylesheet" href="order.css">
+</head>
+
+<body>
+
+    <!-- Main website heading. -->
+    <header>
+        <h1>Peak Finds</h1>
+        <p>Find your perfect bag!</p>
+    </header>
+
+    <!-- Navigation for order features. -->
+    <nav>
+        <a href="customer.html">Customer Home</a>
+        <a href="#placeOrder">Place an Order</a>
+        <a href="#myOrders">My Orders</a>
+        <a href="#manageOrders">Manage Orders</a>
+    </nav>
+
+    <main>
+
+        <!-- ============ PLACE AN ORDER (SR-1, SR-2, SR-3, SR-4) ============ -->
+        <section id="placeOrder">
+
+            <h2>Place an Order</h2>
+
+            <!-- Step 1: choose the items for the order. -->
+            <h3>1. Order Items</h3>
+
+            <label for="productSelect">Product:</label>
+            <select id="productSelect"></select>
+
+            <label for="quantity">Quantity:</label>
+            <input type="number" id="quantity" min="1" value="1">
+
+            <button type="button" onclick="addItem()">Add Item</button>
+
+            <!-- The items the customer has added appear here. -->
+            <div id="orderItems">
+                <p>No items added yet.</p>
+            </div>
+
+            <!-- Step 2: the customer's details for the order. -->
+            <h3>2. Order Details</h3>
+
+            <div class="form-row">
+                <label for="customerID">Customer ID:</label>
+                <input type="text" id="customerID" placeholder="e.g. C1000">
+            </div>
+
+            <div class="form-row">
+                <label for="deliveryAddress">Delivery Address or Pickup Location:</label>
+                <input type="text" id="deliveryAddress" placeholder="e.g. 12 Hope Road">
+            </div>
+
+            <div class="form-row">
+                <label for="contactNumber">Contact Number:</label>
+                <input type="text" id="contactNumber" placeholder="e.g. 876-555-0101">
+            </div>
+
+            <div class="form-row">
+                <label for="paymentMethod">Payment Method:</label>
+                <select id="paymentMethod">
+                    <option value="">Select Payment Method</option>
+                    <option value="Cash on Delivery">Cash on Delivery</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                </select>
+            </div>
+
+            <button type="button" onclick="placeOrder()">Place Order</button>
+
+            <!-- Error messages for orders that are refused (SR-2). -->
+            <p id="orderMessage" class="message"></p>
+
+            <!-- The invoice appears here once an order is placed (SR-3). -->
+            <div id="invoice"></div>
+
+        </section>
+
+
+        <!-- ============ MY ORDERS: TRACK AND CANCEL (SR-5, SR-6, SR-7, SR-8) ============ -->
+        <section id="myOrders">
+
+            <h2>My Orders</h2>
+
+            <!-- A customer can only see their own orders. -->
+            <label for="trackCustomerID">Enter your Customer ID:</label>
+            <input type="text" id="trackCustomerID" placeholder="e.g. C1000">
+            <button type="button" onclick="showMyOrders()">View My Orders</button>
+
+            <!-- The customer's orders and their status history appear here. -->
+            <div id="myOrderList">
+                <p>No orders loaded yet.</p>
+            </div>
+
+        </section>
+
+
+        <!-- ============ MANAGE ORDERS: AUTHORISED USER (SR-4, SR-5, SR-6) ============ -->
+        <section id="manageOrders">
+
+            <h2>Manage Orders (Authorised User)</h2>
+
+            <p>Confirm bank transfers and update each order as it moves through processing.</p>
+
+            <!-- Every order appears here for the authorised user. -->
+            <div id="allOrderList">
+                <p>No orders have been placed yet.</p>
+            </div>
+
+            <!-- Shows how stock changes when orders are placed or cancelled (SR-8). -->
+            <h3>Inventory Stock</h3>
+            <div id="stockList"></div>
+
+        </section>
+
+    </main>
+
+
+    <!-- Website footer. -->
+    <footer>
+        <p>Peak Finds</p>
+    </footer>
+
+
+    <script>
+        // ---------------------------------------------------------------
+        // Sample products for now (IDs, names and prices from Product
+        // Management). Later these come from the database.
+        // ---------------------------------------------------------------
+        const products = [
+            { id: "P001", name: "Blush Pink Juicy Couture", price: 7000, stock: 3 },
+            { id: "P003", name: "Pink Juicy Shoulder Bag", price: 9500, stock: 2 },
+            { id: "P007", name: "Karl Lagerfeld Paris Crossbody Bag", price: 13500, stock: 1 },
+            { id: "P009", name: "Pink Juicy Crossbody Bag", price: 8500, stock: 4 },
+            { id: "P010", name: "Sage Green Crossbody Bag + Card Holder", price: 8500, stock: 2 }
+        ];
+
+        // Status names use the exact wording from the SRS.
+        const PROCESSING_STAGES = ["Awaiting Payment", "Order Confirmed", "Order Packaging"];
+        const SENT_TO_DELIVERY = "Order Entered Delivery Management Process";
+
+        let currentItems = {};   // items in the order being built: productID -> quantity
+        let orders = [];         // every order placed
+        let nextOrderNumber = 1; // makes each order ID unique (SR-1)
+
+        // Fills the product dropdown when the page loads.
+        function loadProducts() {
+            const select = document.getElementById("productSelect");
+            select.innerHTML = "";
+            products.forEach(function (p) {
+                select.innerHTML += "<option value='" + p.id + "'>" + p.id + " - " + p.name
+                    + " (" + formatPrice(p.price) + ")</option>";
+            });
+            showStock();
+        }
+
+        function findProduct(productID) {
+            return products.find(function (p) { return p.id === productID; });
+        }
+
+        function formatPrice(amount) {
+            return "J$" + amount.toLocaleString("en-US", { minimumFractionDigits: 2 });
+        }
+
+        function timestamp() {
+            const now = new Date();
+            return now.toLocaleDateString("en-CA") + " " + now.toTimeString().slice(0, 5);
+        }
+
+        // Adds the chosen product and quantity to the order being built.
+        function addItem() {
+            const productID = document.getElementById("productSelect").value;
+            const quantity = parseInt(document.getElementById("quantity").value);
+            if (!quantity || quantity < 1) {
+                showMessage("Quantity must be at least 1.");
+                return;
+            }
+            currentItems[productID] = (currentItems[productID] || 0) + quantity;
+            showMessage("");
+            showCurrentItems();
+        }
+
+        function removeItem(productID) {
+            delete currentItems[productID];
+            showCurrentItems();
+        }
+
+        function showCurrentItems() {
+            const box = document.getElementById("orderItems");
+            const ids = Object.keys(currentItems);
+            if (ids.length === 0) {
+                box.innerHTML = "<p>No items added yet.</p>";
+                return;
+            }
+            let html = "<table><tr><th>Product</th><th>Quantity</th><th>Price</th><th></th></tr>";
+            ids.forEach(function (id) {
+                const p = findProduct(id);
+                html += "<tr><td>" + id + " - " + p.name + "</td><td>" + currentItems[id] + "</td><td>"
+                    + formatPrice(p.price * currentItems[id]) + "</td>"
+                    + "<td><button type='button' class='small' onclick=\"removeItem('" + id + "')\">Remove</button></td></tr>";
+            });
+            box.innerHTML = html + "</table>";
+        }
+
+        // SR-2: the order must have at least one item and every required field filled in.
+        function validateOrder(order) {
+            if (Object.keys(order.items).length === 0) return "At least one item is required.";
+            if (order.customerID === "") return "Customer ID is required.";
+            if (order.deliveryAddress === "") return "Delivery address or pickup location is required.";
+            if (order.contactNumber === "") return "Contact number is required.";
+            if (order.paymentMethod === "") return "A payment method is required.";
+            for (const id in order.items) {
+                if (findProduct(id).stock < order.items[id]) return "Not enough stock for " + findProduct(id).name + ".";
+            }
+            return "";
+        }
+
+        // SR-1 to SR-4: places the order, gives it a unique ID, sets its first status and shows the invoice.
+        function placeOrder() {
+            const order = {
+                customerID: document.getElementById("customerID").value.trim(),
+                deliveryAddress: document.getElementById("deliveryAddress").value.trim(),
+                contactNumber: document.getElementById("contactNumber").value.trim(),
+                paymentMethod: document.getElementById("paymentMethod").value,
+                items: Object.assign({}, currentItems),
+                statusHistory: []
+            };
+
+            const error = validateOrder(order);
+            if (error !== "") {
+                showMessage("Order refused: " + error);   // refused orders get no ID and no invoice
+                document.getElementById("invoice").innerHTML = "";
+                return;
+            }
+
+            order.orderID = "ORD" + String(nextOrderNumber++).padStart(4, "0");
+            order.orderDate = timestamp();
+            order.totalAmount = calculateTotal(order.items);
+
+            // SR-4: bank transfer waits for the authorised user; cash on delivery is confirmed right away.
+            if (order.paymentMethod === "Bank Transfer") {
+                order.paymentStatus = "Unpaid";
+                updateStatus(order, "Awaiting Payment");
+            } else {
+                order.paymentStatus = "Pay on Delivery";
+                updateStatus(order, "Order Confirmed");
+            }
+
+            // Placed items leave inventory stock.
+            for (const id in order.items) findProduct(id).stock -= order.items[id];
+
+            orders.push(order);
+            showMessage("");
+            showInvoice(order);
+
+            currentItems = {};
+            showCurrentItems();
+            refreshLists();
+        }
+
+        function calculateTotal(items) {
+            let total = 0;
+            for (const id in items) total += findProduct(id).price * items[id];
+            return total;
+        }
+
+        // SR-3: the invoice shown to the customer once the order is placed.
+        function showInvoice(order) {
+            let rows = "";
+            for (const id in order.items) {
+                const p = findProduct(id);
+                rows += "<tr><td>" + p.name + "</td><td>" + order.items[id] + "</td><td>"
+                    + formatPrice(p.price * order.items[id]) + "</td></tr>";
+            }
+            document.getElementById("invoice").innerHTML =
+                "<div class='invoice'>"
+                + "<h3>Peak Finds Invoice</h3>"
+                + "<p><strong>Order ID:</strong> " + order.orderID + "</p>"
+                + "<p><strong>Order Date:</strong> " + order.orderDate + "</p>"
+                + "<p><strong>Customer ID:</strong> " + order.customerID + "</p>"
+                + "<p><strong>Delivery Address:</strong> " + order.deliveryAddress + "</p>"
+                + "<p><strong>Contact Number:</strong> " + order.contactNumber + "</p>"
+                + "<table><tr><th>Item</th><th>Quantity</th><th>Price</th></tr>" + rows + "</table>"
+                + "<p class='total'>Total: " + formatPrice(order.totalAmount) + "</p>"
+                + "<p><strong>Payment Method:</strong> " + order.paymentMethod + "</p>"
+                + "<p><strong>Payment Status:</strong> " + order.paymentStatus + "</p>"
+                + "<p><strong>Order Status:</strong> " + order.orderStatus + "</p>"
+                + "<p class='note'>You will receive email updates as your order is processed.</p>"
+                + "</div>";
+        }
+
+        // SR-5: changes the status and records it in the status history with the date and time.
+        function updateStatus(order, status) {
+            if (order.orderStatus === "Cancelled") return;   // no updates after cancelling
+            order.orderStatus = status;
+            order.statusHistory.push(status + " - " + timestamp());
+        }
+
+        function isProcessingStage(order) {
+            return PROCESSING_STAGES.includes(order.orderStatus);
+        }
+
+        // SR-4: the authorised user confirms the bank transfer was received.
+        function confirmPayment(orderID) {
+            const order = findOrder(orderID);
+            if (order.orderStatus !== "Awaiting Payment") return;
+            order.paymentStatus = "Paid";
+            updateStatus(order, "Order Confirmed");
+            refreshLists();
+        }
+
+        // SR-5: the authorised user moves an order to the next stage.
+        function startPackaging(orderID) {
+            const order = findOrder(orderID);
+            if (order.orderStatus !== "Order Confirmed") return;
+            updateStatus(order, "Order Packaging");
+            refreshLists();
+        }
+
+        function sendToDelivery(orderID) {
+            const order = findOrder(orderID);
+            if (order.orderStatus !== "Order Packaging") return;
+            updateStatus(order, SENT_TO_DELIVERY);
+            refreshLists();
+        }
+
+        // SR-6 to SR-8: cancels an order still in processing, returns its items to stock
+        // and shows the cancellation message.
+        function cancelOrder(orderID) {
+            const order = findOrder(orderID);
+            if (!isProcessingStage(order)) {
+                alert("Order " + orderID + " has entered delivery and can no longer be cancelled.");
+                return;
+            }
+            if (!confirm("Are you sure you want to cancel order " + orderID + "?")) return;
+
+            updateStatus(order, "Cancelled");
+            for (const id in order.items) findProduct(id).stock += order.items[id];   // SR-8
+
+            let itemList = "";
+            for (const id in order.items) itemList += "\n- " + findProduct(id).name + " x" + order.items[id];
+            alert("Your order " + order.orderID + " has been cancelled.\n\nCancelled items:" + itemList
+                + "\n\nDelivery Address: " + order.deliveryAddress
+                + "\nPayment Method: " + order.paymentMethod);   // SR-7 (becomes an email later)
+
+            refreshLists();
+        }
+
+        function findOrder(orderID) {
+            return orders.find(function (o) { return o.orderID === orderID; });
+        }
+
+        // Builds the card for one order, with its status history.
+        function orderCard(order, forOwner) {
+            let history = "";
+            order.statusHistory.forEach(function (h) { history += "<li>" + h + "</li>"; });
+
+            let buttons = "";
+            if (forOwner && order.orderStatus === "Awaiting Payment")
+                buttons += "<button type='button' onclick=\"confirmPayment('" + order.orderID + "')\">Confirm Payment</button>";
+            if (forOwner && order.orderStatus === "Order Confirmed")
+                buttons += "<button type='button' onclick=\"startPackaging('" + order.orderID + "')\">Start Packaging</button>";
+            if (forOwner && order.orderStatus === "Order Packaging")
+                buttons += "<button type='button' onclick=\"sendToDelivery('" + order.orderID + "')\">Send to Delivery</button>";
+            if (isProcessingStage(order))
+                buttons += "<button type='button' class='cancel' onclick=\"cancelOrder('" + order.orderID + "')\">Cancel Order</button>";
+
+            return "<div class='order-card'>"
+                + "<p><strong>" + order.orderID + "</strong> &middot; Customer " + order.customerID
+                + " &middot; " + formatPrice(order.totalAmount) + "</p>"
+                + "<p>Status: <span class='status'>" + order.orderStatus + "</span>"
+                + " &middot; Payment: " + order.paymentStatus + "</p>"
+                + "<p><strong>Status History:</strong></p><ul>" + history + "</ul>"
+                + buttons + "</div>";
+        }
+
+        // Shows only the orders for the customer ID entered.
+        function showMyOrders() {
+            const customerID = document.getElementById("trackCustomerID").value.trim();
+            const box = document.getElementById("myOrderList");
+            const mine = orders.filter(function (o) { return o.customerID === customerID; });
+            if (customerID === "") {
+                box.innerHTML = "<p>Please enter your Customer ID.</p>";
+            } else if (mine.length === 0) {
+                box.innerHTML = "<p>No orders found for " + customerID + ".</p>";
+            } else {
+                box.innerHTML = mine.map(function (o) { return orderCard(o, false); }).join("");
+            }
+        }
+
+        function showAllOrders() {
+            const box = document.getElementById("allOrderList");
+            box.innerHTML = orders.length === 0
+                ? "<p>No orders have been placed yet.</p>"
+                : orders.map(function (o) { return orderCard(o, true); }).join("");
+        }
+
+        function showStock() {
+            let html = "<table><tr><th>Product</th><th>In Stock</th></tr>";
+            products.forEach(function (p) {
+                html += "<tr><td>" + p.id + " - " + p.name + "</td><td>" + p.stock + "</td></tr>";
+            });
+            document.getElementById("stockList").innerHTML = html + "</table>";
+        }
+
+        function refreshLists() {
+            showAllOrders();
+            showStock();
+            if (document.getElementById("trackCustomerID").value.trim() !== "") showMyOrders();
+        }
+
+        function showMessage(text) {
+            document.getElementById("orderMessage").textContent = text;
+        }
+
+        loadProducts();
+    </script>
+
+</body>
+</html>
