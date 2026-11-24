@@ -1,0 +1,13 @@
+<section class="narrow">
+  <h1>Log in</h1>
+  {{error}}
+  <form method="post" action="/login" class="form" autocomplete="on">
+    <input type="hidden" name="next" value="{{next}}">
+    <label for="email">Email</label>
+    <input id="email" name="email" type="email" value="{{email}}" required autocomplete="username">
+    <label for="password">Password</label>
+    <input id="password" name="password" type="password" required autocomplete="current-password">
+    <button type="submit" class="button">Log in</button>
+  </form>
+  <p>New here? <a href="/signup">Create an account</a></p>
+</section>
