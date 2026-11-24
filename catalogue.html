@@ -86,7 +86,7 @@
           <a class="card ${out ? "soldout" : ""}" href="productdetails.html?id=${p.id}">
             <div class="photo">
               <span class="ph">👜</span>
-              <img src="${p.image}" alt="${p.name}" onerror="this.remove()">
+              <img src="${p.image}" alt="${p.name}" onload="this.parentElement.classList.add('has-img')" onerror="this.remove()">
               ${out ? '<span class="badge">Out of Stock</span>' : ""}
             </div>
             <div class="name">${p.name}</div>
