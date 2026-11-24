@@ -1,0 +1,9 @@
+target/
+out/
+data/
+uploads/
+*.db
+*.class
+.idea/
+.vscode/
+.env
