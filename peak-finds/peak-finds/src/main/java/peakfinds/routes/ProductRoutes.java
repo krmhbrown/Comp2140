@@ -38,6 +38,7 @@ public final class ProductRoutes {
         router.get("/owner/products/{id}/edit", Action.MANAGE_PRODUCTS, r::editForm);
         router.post("/owner/products/{id}/edit", Action.MANAGE_PRODUCTS, r::save);
         router.post("/owner/products/{id}/stock", Action.MANAGE_PRODUCTS, r::stock);
+        router.get("/owner/products/{id}/remove", Action.MANAGE_PRODUCTS, r::confirmRemove);
         router.post("/owner/products/{id}/remove", Action.MANAGE_PRODUCTS, r::remove);
         router.get("/owner/low-stock", Action.VIEW_LOW_STOCK_ALERTS, r::lowStock);
     }
@@ -85,7 +86,7 @@ public final class ProductRoutes {
     private Response ownerList(Request req) {
         Session s = req.session();
         StringBuilder html = new StringBuilder("<h1>Products</h1><p><a class=\"button\" href=\"/owner/products/new\">Add a product</a></p>");
-        html.append("<table><tr><th>ID</th><th>Name</th><th>Price</th><th>Stock</th><th>Reorder at</th><th></th></tr>");
+        html.append("<table><tr><th>ID</th><th>Name</th><th>Price</th><th>Stock</th><th>Reorder at</th><th>Suppliers</th><th></th></tr>");
         for (Product p : Product.findActive(ctx.db())) {
             html.append("<tr><td>").append(p.displayId()).append("</td><td>").append(Html.esc(p.getName()))
                     .append("</td><td>").append(price(p)).append("</td><td>")
@@ -95,10 +96,9 @@ public final class ProductRoutes {
                     .append("\" class=\"stock-input\"> <button class=\"button\" type=\"submit\">Update</button></form>")
                     .append(p.isOutOfStock() ? " <strong>Out of Stock</strong>" : "")
                     .append("</td><td>").append(p.getReorderLevel()).append("</td><td>")
+                    .append(Html.esc(supplierText(p))).append("</td><td>")
                     .append("<a href=\"/owner/products/").append(p.getProductId()).append("/edit\">Edit</a> ")
-                    .append("<form class=\"inline\" method=\"post\" action=\"/owner/products/").append(p.getProductId()).append("/remove\">")
-                    .append(Layout.csrfField(s))
-                    .append("<button class=\"link-button danger\" type=\"submit\">Remove</button></form>")
+                    .append("<a class=\"danger\" href=\"/owner/products/").append(p.getProductId()).append("/remove\">Remove</a>")
                     .append("</td></tr>");
         }
         html.append("</table>");
@@ -127,7 +127,7 @@ public final class ProductRoutes {
             f.append(field("Starting stock", "stock", "0", "number\" min=\"0"));
         }
         f.append(field("Reorder level", "reorder", edit ? String.valueOf(p.getReorderLevel()) : "1", "number\" min=\"0"));
-        f.append("<label>Image paths (one per line, up to 5, e.g. images/P001.jpeg)<br><textarea class=\"full-width\" name=\"images\" rows=\"3\">")
+        f.append("<label>Photo paths (required, one per line, up to 5, e.g. images/P001.jpeg)<br><textarea class=\"full-width\" name=\"images\" rows=\"3\">")
                 .append(Html.esc(edit ? String.join("\n", p.getImages()) : "")).append("</textarea></label>");
         f.append("<p><strong>Suppliers</strong></p>");
         for (Map<String, Object> s : ctx.db().query("SELECT supplier_id, name FROM suppliers WHERE is_active = 1 ORDER BY supplier_id")) {
@@ -174,6 +174,20 @@ public final class ProductRoutes {
         return Response.redirect("/owner/products");
     }
 
+    /** Asks "are you sure?" before removing. Cancel simply goes back to the table. */
+    private Response confirmRemove(Request req) {
+        Product p = Product.findActiveById(ctx.db(), req.pathLong("id"));
+        if (p == null) {
+            throw new BadRequestException("That product does not exist.");
+        }
+        String html = "<h1>Remove product?</h1><p>Remove <strong>" + Html.esc(p.getName()) + "</strong> (" + p.displayId()
+                + ") from the catalogue? Past orders will keep its name and price.</p>"
+                + "<form method=\"post\" action=\"/owner/products/" + p.getProductId() + "/remove\">"
+                + Layout.csrfField(req.session())
+                + "<button class=\"button\" type=\"submit\">Yes, remove</button> <a href=\"/owner/products\">Cancel</a></form>";
+        return Response.html(Layout.page(req.session(), "Remove product", html));
+    }
+
     private Response remove(Request req) {
         Product p = Product.findActiveById(ctx.db(), req.pathLong("id"));
         if (p == null) {
@@ -213,6 +227,9 @@ public final class ProductRoutes {
                 }
                 paths.add(path);
             }
+        }
+        if (paths.isEmpty()) {
+            throw new ValidationException("A product needs at least one photo. Add an image path such as images/P001.jpeg.");
         }
         if (paths.size() > 5) {
             throw new ValidationException("A product can have at most 5 images.");
@@ -268,6 +285,17 @@ public final class ProductRoutes {
 
     private static String price(Product p) {
         return "$" + String.format("%,.0f", p.getPrice());
+    }
+
+    private static String supplierText(Product p) {
+        if (p.getSupplierIds().isEmpty()) {
+            return "none";
+        }
+        List<String> ids = new ArrayList<>();
+        for (Long id : p.getSupplierIds()) {
+            ids.add(String.format("S%03d", id));
+        }
+        return String.join(", ", ids);
     }
 
     private static String plain(double d) {
