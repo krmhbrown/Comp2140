@@ -20,6 +20,11 @@
     .facts { margin: 22px 0; font-size: 15px; line-height: 2; border-top: 1px solid var(--line); padding-top: 16px; }
     .facts b { font-weight: 500; display: inline-block; width: 100px; }
     .desc { color: var(--muted); line-height: 1.7; }
+    .buy { margin-top: 24px; }
+    .buy button { width: 100%; padding: 14px; border: none; border-radius: 8px; background: var(--green); color: #fff; font-family: inherit; font-size: 16px; font-weight: 500; cursor: pointer; }
+    .buy button:hover { background: #2f4a3d; }
+    .buy button:disabled { background: #ddd; color: #888; cursor: not-allowed; }
+    .added { margin-top: 12px; color: var(--green); font-size: 14px; }
     .missing { text-align: center; color: var(--muted); padding: 60px 0; }
     @media (max-width: 800px) { .detail { grid-template-columns: 1fr; gap: 24px; } }
   </style>
@@ -33,13 +38,13 @@
       <input type="text" id="search" placeholder="Search for bags or colours" onkeydown="if(event.key==='Enter')location.href='catalogue.html'">
     </div>
     <div class="icons">
-      <!-- Sign in belongs to another teammate's feature: change login.html to their file name -->
-      <a href="login.html" class="icon-link" title="Sign in">
+      <!-- Sign in belongs to another teammate's feature: links to Tamara's customer page (account section) until the final login page is ready -->
+      <a href="website/customer.html#account" class="icon-link" title="Sign in">
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3.2"/><path d="M5.8 18.2c1.6-2.3 3.7-3.4 6.2-3.4s4.6 1.1 6.2 3.4"/></svg>
         <span class="label">Sign In</span>
       </a>
-      <!-- Cart belongs to another teammate's feature: change cart.html to their file name -->
-      <a href="cart.html" class="icon-link" title="Cart">
+      <!-- Cart belongs to another teammate's feature: links to Tamara's customer page (cart section) until the final cart page is ready -->
+      <a href="website/customer.html#cart" class="icon-link" title="Cart">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l1 12H5L6 8z"/><path d="M9 8V6.5a3 3 0 016 0V8"/></svg>
         <span class="cart-count" id="cartCount">0</span>
       </a>
@@ -60,7 +65,7 @@
 
   <script src="products.js"></script>
   <script>
-    // Customers never see the supplier or the reorder level (SRS Feature 04, UR1 SR-1).
+    // Customers never see the supplier or the reorder level (SRS Feature 05, SR-5).
     const id = new URLSearchParams(location.search).get("id");
     const p = products.find(item => item.id === id);
     const content = document.getElementById("content");
@@ -68,7 +73,7 @@
     if (!p) {
       content.innerHTML = '<p class="missing">Sorry, we could not find that bag.</p>';
     } else {
-      const out = p.quantity === 0;   // "Out of Stock" when the quantity is 0 (UR4 SR-2)
+      const out = p.quantity === 0;   // "Out of Stock" when the quantity is 0 (SR-12)
       document.title = "Peak Finds – " + p.name;
       document.getElementById("crumb").textContent = p.name;
       content.innerHTML = `
@@ -87,8 +92,19 @@
               <b>Category</b> ${p.category}
             </div>
             <p class="desc">${p.description}</p>
+            <div class="buy">
+              <button id="addBtn" ${out ? "disabled" : ""}>${out ? "Out of Stock" : "Add to Cart"}</button>
+            </div>
+            <div class="added" id="added"></div>
           </div>
         </div>`;
+
+      if (!out) {
+        document.getElementById("addBtn").addEventListener("click", () => {
+          // TODO: call the Cart teammate's code here (productId = p.id, quantity = 1)
+          document.getElementById("added").textContent = "Added to your cart (placeholder until the cart feature is connected).";
+        });
+      }
     }
   </script>
 </body>
