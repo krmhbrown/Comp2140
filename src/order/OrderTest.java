@@ -1,9 +1,36 @@
 package order;
 import java.util.HashMap;
 
+import product.Product;
+
 //Runs the Order Management test cases (TC-1.1 to TC-1.16) using the data from the test plan
 public class OrderTest {
     public static void main(String[] args) {
+        // Products from Product Management (names and prices from the owner's list, 50 of each in stock).
+        // addProduct() gives them the IDs P001, P002 ... in this order.
+        String[][] productList = {
+            {"Blush Pink Juicy Couture", "Blush Pink", "Backpack", "7000"},
+            {"Dark Pink Juicy C. Backpack", "Dark Pink", "Backpack", "10500"},
+            {"Pink Juicy Shoulder Bag", "Pink", "Shoulder Bag", "9500"},
+            {"Jesica Simpson Backpack", "White", "Backpack", "6500"},
+            {"Basic Fashion Shoulder Bag", "White", "Shoulder Bag", "6500"},
+            {"White Steve Madden Shoulder Bag", "White", "Shoulder Bag", "9000"},
+            {"Karl Lagerfeld Paris Crossbody Bag", "White", "Crossbody Bag", "13500"},
+            {"DKNY Margot Crescent Crossbody Bag", "White", "Crossbody Bag", "14500"},
+            {"Pink Juicy Crossbody Bag", "Pink", "Crossbody Bag", "8500"}
+        };
+        HashMap<String, Product> catalogue = new HashMap<>();
+        for (String[] p : productList) {
+            Product product = new Product(p[0], p[1], p[2], Double.parseDouble(p[3]), 50);
+            product.setDescription(p[0] + ".");
+            product.setReorderLevel(1);
+            product.addImage("images/" + p[0] + ".jpg");
+            product.addSupplierID("S-001");
+            product.addProduct();
+            catalogue.put(product.getProductID(), product);
+        }
+        Order.setCatalogue(catalogue);
+
         HashMap<String, Integer> items = new HashMap<>();
         items.put("P001", 2);
 
@@ -95,19 +122,24 @@ public class OrderTest {
 
         // TS-15 (TC-1.15): cancelling an order with two products returns the exact quantity of each to stock
         HashMap<String, Integer> twoItems = new HashMap<>();
-        twoItems.put("P001", 2); // Pink Juicy Crossbody Bag
+        twoItems.put("P009", 2); // Pink Juicy Crossbody Bag
         twoItems.put("P002", 3); // second item
         Order multi = new Order("C1015", twoItems, "12 Pines Crescent", "Cash on Delivery", "876-555-0115");
         multi.placeOrder();
         multi.updateStatus("Order Packaging");
-        System.out.println("TS-15 cancelled: " + multi.cancelOrder()); // restock lines print here: P001 +2, P002 +3
+        System.out.println("TS-15 stock before cancelling: P009 = " + catalogue.get("P009").getStockQuantity()
+                + ", P002 = " + catalogue.get("P002").getStockQuantity());
+        System.out.println("TS-15 cancelled: " + multi.cancelOrder());
+        System.out.println("TS-15 stock after cancelling: P009 = " + catalogue.get("P009").getStockQuantity()
+                + ", P002 = " + catalogue.get("P002").getStockQuantity());
 
         // TS-16 (TC-1.16): stock does not change when cancelling an order that is in delivery
         Order delivering = new Order("C1016", items, "11 Trafalgar Road", "Cash on Delivery", "876-555-0116");
         delivering.placeOrder();
         delivering.updateStatus("Order Packaging");
         delivering.updateStatus("Order Entered Delivery Management Process");
-        System.out.println("TS-16 cancel in delivery: " + delivering.cancelOrder()); // no restock line should print
-       // System.out.println("TS-16 cancel already cancelled (TC-1.13 order): " + cancelMsg.cancelOrder()); // no restock line
+        int stockBefore = catalogue.get("P001").getStockQuantity();
+        System.out.println("TS-16 cancel in delivery: " + delivering.cancelOrder());
+        System.out.println("TS-16 P001 stock before: " + stockBefore + ", after: " + catalogue.get("P001").getStockQuantity());
     }
 }
