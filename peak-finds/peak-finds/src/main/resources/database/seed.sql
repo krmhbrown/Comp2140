@@ -28,7 +28,7 @@ INSERT INTO products (product_id, name, description, colour, category, price, st
  (1, 'Blush Pink Juicy Couture', 'Blush pink Juicy Couture backpack.', 'Blush Pink', 'Backpack', 7000, 0, 1),
  (2, 'Dark Pink Juicy C. Backpack', 'Dark pink Juicy backpack.', 'Dark Pink', 'Backpack', 10500, 0, 1),
  (3, 'Pink Juicy Shoulder Bag', 'Pink Juicy shoulder bag.', 'Pink', 'Shoulder Bag', 9500, 2, 1),
- (4, 'Jesica Simpson Backpack', 'Jesica Simpson backpack.', 'White', 'Backpack', 6500, 0, 1),
+ (4, 'Jessica Simpson Backpack', 'Jessica Simpson backpack.', 'White', 'Backpack', 6500, 0, 1),
  (5, 'Basic Fashion Shoulder Bag', 'Basic fashion shoulder bag.', 'White', 'Shoulder Bag', 6500, 1, 1),
  (6, 'White Steve Madden Shoulder Bag + Coin Pouch & Adjustable Strap', 'White Steve Madden shoulder bag that comes with a coin pouch and an adjustable strap.', 'White', 'Shoulder Bag', 9000, 1, 1),
  (7, 'Karl Lagerfeld Paris Crossbody Bag', 'Karl Lagerfeld Paris crossbody bag.', 'White', 'Crossbody Bag', 13500, 1, 1),
