@@ -85,6 +85,7 @@ public final class DeliveryEmailWorker {
             props.put("mail.smtp.auth", "true");
             props.put("mail.smtp.starttls.enable", "true");
             props.put("mail.smtp.starttls.required", "true");
+            props.put("mail.smtp.ssl.protocols", "TLSv1.2");
             props.put("mail.smtp.ssl.checkserveridentity", "true");
             props.put("mail.smtp.connectiontimeout", "5000");
             props.put("mail.smtp.timeout", "5000");
