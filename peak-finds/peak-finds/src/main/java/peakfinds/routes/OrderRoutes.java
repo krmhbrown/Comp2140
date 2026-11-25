@@ -12,6 +12,8 @@ import peakfinds.auth.Validator;
 import peakfinds.database.Rows;
 import peakfinds.models.Order;
 import peakfinds.models.Product;
+import peakfinds.services.CartService;
+import peakfinds.services.CartService.CartItem;
 import peakfinds.ui.Layout;
 import peakfinds.web.BadRequestException;
 import peakfinds.web.Html;
@@ -62,61 +64,131 @@ public final class OrderRoutes {
         return Response.html(Layout.page(s, "My orders", html.toString()));
     }
 
+    /** Show only saved cart items when checkout starts from the shopping bag. */
     private Response newOrderForm(Request req) {
         Session s = req.session();
-        Map<String, Object> customer = customerRow(customerId(s));
+        long customerId = customerId(s);
+        Map<String, Object> customer = customerRow(customerId);
+        boolean fromCart = "1".equals(req.query("from_cart"));
+        CartService cart = new CartService(ctx.db());
+
+        if (fromCart) {
+            cart.validateForCheckout(customerId);
+        }
+
         StringBuilder f = new StringBuilder("<h1>Place an order</h1>");
+        if (fromCart) {
+            f.append("<p>Review the items from your shopping bag and enter your delivery details.</p>");
+        }
         f.append("<form method=\"post\" action=\"/orders/new\">").append(Layout.csrfField(s));
+        if (fromCart) {
+            f.append("<input type=\"hidden\" name=\"from_cart\" value=\"1\">");
+        }
         f.append("<table><tr><th>ID</th><th>Bag</th><th>Price</th><th>In stock</th><th>Quantity</th></tr>");
         boolean any = false;
-        for (Product p : Product.findActive(ctx.db())) {
-            if (p.isOutOfStock()) {
-                continue;   // out-of-stock bags can't be ordered
+        if (fromCart) {
+            for (CartItem item : cart.getItems(customerId)) {
+                any = true;
+                f.append("<tr><td>").append(String.format("P%03d", item.productId()))
+                        .append("</td><td>").append(Html.esc(item.name()))
+                        .append("</td><td>").append(money(item.price().doubleValue()))
+                        .append("</td><td>").append(item.availableStock())
+                        .append("</td><td>").append(item.quantity())
+                        .append("</td></tr>");
             }
-            any = true;
-            f.append("<tr><td>").append(p.displayId()).append("</td><td>").append(Html.esc(p.getName()))
-                    .append("</td><td>").append(money(p.getPrice())).append("</td><td>").append(p.getStockQuantity())
-                    .append("</td><td><input class=\"stock-input\" type=\"number\" name=\"qty_").append(p.getProductId())
-                    .append("\" min=\"0\" max=\"").append(p.getStockQuantity()).append("\" value=\"0\"></td></tr>");
+        } else {
+            // Preserve Arriyanna's original direct-order form.
+            for (Product p : Product.findActive(ctx.db())) {
+                if (p.isOutOfStock()) {
+                    continue;
+                }
+                any = true;
+                f.append("<tr><td>").append(p.displayId()).append("</td><td>").append(Html.esc(p.getName()))
+                        .append("</td><td>").append(money(p.getPrice())).append("</td><td>").append(p.getStockQuantity())
+                        .append("</td><td><input class=\"stock-input\" type=\"number\" name=\"qty_").append(p.getProductId())
+                        .append("\" min=\"0\" max=\"").append(p.getStockQuantity()).append("\" value=\"0\"></td></tr>");
+            }
         }
         f.append("</table>");
         if (!any) {
-            return Response.html(Layout.page(s, "Place an order", "<h1>Place an order</h1><p>Every bag is out of stock right now.</p>"));
+            return Response.html(Layout.page(s, "Place an order",
+                    "<h1>Place an order</h1><p>No available bags to order.</p><p><a href=\"/cart\">Back to shopping bag</a></p>"));
         }
-        f.append("<label>Delivery address<br><input class=\"full-width\" name=\"address\" value=\"")
+
+        if (fromCart) {
+            f.append("<p><strong>Items total:</strong> ")
+                    .append(money(cart.getTotal(customerId).doubleValue()))
+                    .append("</p><p>Delivery charges are not included in this item total.</p>");
+        }
+        f.append("<label>Delivery address<br><input class=\"full-width\" name=\"address\" required value=\"")
                 .append(Html.esc(nz(Rows.str(customer, "delivery_address")))).append("\"></label><br>");
-        f.append("<label>Contact number<br><input name=\"phone\" value=\"")
+        f.append("<label>Contact number<br><input name=\"phone\" required value=\"")
                 .append(Html.esc(nz(Rows.str(customer, "phone_number")))).append("\"></label>");
-        f.append("<p><strong>Payment method</strong></p>");
-        for (String m : Constants.PAYMENT_METHODS) {
-            f.append("<label><input type=\"radio\" name=\"payment\" value=\"").append(Html.esc(m)).append("\"")
-                    .append(m.equals(Constants.PAYMENT_CASH_ON_DELIVERY) ? " checked" : "").append("> ")
-                    .append(Html.esc(m)).append("</label><br>");
+
+        if (fromCart) {
+            f.append("<p><strong>Payment method:</strong> ")
+                    .append(Html.esc(cart.getPaymentMethod(customerId)))
+                    .append("</p><p><a href=\"/cart\">Change payment method in shopping bag</a></p>");
+        } else {
+            f.append("<p><strong>Payment method</strong></p>");
+            for (String m : Constants.PAYMENT_METHODS) {
+                f.append("<label><input type=\"radio\" name=\"payment\" value=\"").append(Html.esc(m)).append("\"")
+                        .append(m.equals(Constants.PAYMENT_CASH_ON_DELIVERY) ? " checked" : "").append("> ")
+                        .append(Html.esc(m)).append("</label><br>");
+            }
         }
-        f.append("<button class=\"button\" type=\"submit\">Place order</button> <a href=\"/orders\">Cancel</a></form>");
+        f.append("<button class=\"button\" type=\"submit\">Place order</button> <a href=\"")
+                .append(fromCart ? "/cart" : "/orders").append("\">Cancel</a></form>");
         return Response.html(Layout.page(s, "Place an order", f.toString()));
     }
 
+    /** Place an order from either the saved shopping bag or the original form. */
     private Response placeOrder(Request req) {
         Session s = req.session();
         long customerId = customerId(s);
         Map<String, Object> customer = customerRow(customerId);
+        boolean fromCart = "1".equals(req.form("from_cart"));
+        CartService cart = new CartService(ctx.db());
         String address = Validator.text(req.form("address"), "Delivery address", 300);
         String phone = Validator.phone(req.form("phone"));
-        String payment = Validator.oneOf(req.form("payment"), "payment method", Constants.PAYMENT_METHODS);
+
+        String payment;
+        if (fromCart) {
+            // Revalidate on POST: stock/payment may have changed since the GET.
+            cart.validateForCheckout(customerId);
+            payment = Validator.oneOf(cart.getPaymentMethod(customerId),
+                    "payment method", Constants.PAYMENT_METHODS);
+        } else {
+            payment = Validator.oneOf(req.form("payment"), "payment method", Constants.PAYMENT_METHODS);
+        }
 
         Order order = new Order(customerId, Rows.str(customer, "name"), address, phone, payment);
-        for (Product p : Product.findActive(ctx.db())) {
-            String raw = req.form("qty_" + p.getProductId());
-            if (raw == null || raw.isBlank()) {
-                continue;
+        if (fromCart) {
+            for (CartItem item : cart.getItems(customerId)) {
+                Product p = Product.findActiveById(ctx.db(), item.productId());
+                if (p == null) {
+                    throw new ValidationException("A product in your cart is no longer available.");
+                }
+                order.addItem(p, item.quantity());
             }
-            int qty = Validator.intInRange(raw, "Quantity for " + p.getName(), 0, 1000);
-            if (qty > 0) {
-                order.addItem(p, qty);
+        } else {
+            for (Product p : Product.findActive(ctx.db())) {
+                String raw = req.form("qty_" + p.getProductId());
+                if (raw == null || raw.isBlank()) {
+                    continue;
+                }
+                int qty = Validator.intInRange(raw, "Quantity for " + p.getName(), 0, 1000);
+                if (qty > 0) {
+                    order.addItem(p, qty);
+                }
             }
         }
+
         long id = order.placeOrder(ctx.db(), s.userId());
+        if (fromCart) {
+            // Only clear the bag after the order has been saved successfully.
+            cart.clearCart(customerId);
+        }
         // TODO (SR invoice email): send order.generateInvoice() to the customer once an email sender exists.
         return Response.redirect("/orders/" + id + "?placed=1");
     }
