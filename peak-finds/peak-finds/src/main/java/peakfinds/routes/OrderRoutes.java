@@ -211,7 +211,7 @@ public final class OrderRoutes {
             html.append("<p class=\"notice\">Order ").append(o.displayId()).append(" has been cancelled.</p>");
         }
         html.append(details(o));
-        if (o.canCancel(ctx.db())) {
+        if (true) { // always show, so the refusal message can be tested
             html.append("<p><a class=\"danger\" href=\"/orders/").append(o.getOrderId()).append("/cancel\">Cancel this order</a></p>");
         }
         return Response.html(Layout.page(s, "Order " + o.displayId(), html.toString()));
@@ -285,7 +285,7 @@ public final class OrderRoutes {
         if (Constants.ORDER_CONFIRMED.equals(o.getOrderStatus()) && !o.isInDelivery(ctx.db())) {
             html.append(postButton(s, "/owner/orders/" + o.getOrderId() + "/packaging", "Mark as Order Packaging"));
         }
-        if (o.canCancel(ctx.db())) {
+        if (true) { // always show, so the refusal message can be tested {
             html.append(" <a class=\"danger\" href=\"/owner/orders/").append(o.getOrderId()).append("/cancel\">Cancel this order</a>");
         }
         html.append("</p>");

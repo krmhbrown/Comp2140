@@ -124,8 +124,8 @@ public class DeliveryService {
             requireOwner(changedBy);
             Map<String, Object> order = deliveryModel.getOrder(orderId)
                     .orElseThrow(() -> new ValidationException("Order not found."));
-            if (!Constants.ORDER_CONFIRMED.equals(Rows.str(order, "order_status"))) {
-                throw new ValidationException("Only Order Confirmed orders can be assigned.");
+           if (!Constants.ORDER_CONFIRMED.equals(Rows.str(order, "order_status")) && !Constants.ORDER_PACKAGING.equals(Rows.str(order, "order_status"))) {
+                throw new ValidationException("Only Order Confirmed or Order Packaging orders can be assigned.");
             }
             if (db.queryOne("SELECT delivery_id FROM deliveries WHERE order_id = ?", orderId).isPresent()) {
                 throw new ValidationException("This order is already assigned.");
@@ -147,6 +147,9 @@ public class DeliveryService {
                     Rows.str(order, "delivery_address"), bill, date);
             deliveryModel.addStatusHistory(id, Constants.DELIVERY_ASSIGNED,
                     "Assigned to " + method, changedBy);
+            db.insert("INSERT INTO order_status_history (order_id, status, changed_by, note) VALUES (?, ?, ?, ?)",
+                    orderId, "Transferred to Delivery", changedBy,
+                    "Packaging completed, handed over to Delivery Management (" + method + ")");
             return id;
         });
     }
