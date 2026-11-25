@@ -815,3 +815,80 @@ td {
     margin-top: 22px;
     text-align: center;
 }
+
+/* Customer Account - Deactivation Button */
+a[href="/account/deactivate"] {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 505px;
+    min-height: 48px;
+    margin: 24px 0 16px !important;
+    padding: 12px 18px !important;
+    background: #fff !important;
+    border: 1.5px solid #b83280 !important;
+    border-radius: 10px !important;
+    color: #b83280 !important;
+    text-decoration: none !important;
+    font-weight: 650 !important;
+    text-align: center;
+}
+
+a[href="/account/deactivate"]:hover {
+    background: #fff0f7 !important;
+}
+
+a[href="/account/deactivate"] + a[href="/customer"] {
+    display: inline-block;
+    margin-top: 10px;
+}
+
+/* Keep payment and checkout buttons separated */
+.pf-bag-payment-form {
+    margin-bottom: 0 !important;
+}
+
+
+/* Shopping Cart - Payment and Checkout Buttons */
+
+.pf-bag-payment-form button.pf-bag-primary {
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box;
+    min-height: 48px;
+    background: white !important;
+    color: #b83280 !important;
+    border: 1.5px solid #b83280 !important;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.pf-bag-summary-card button[name="next"][value="checkout"] {
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box;
+    min-height: 50px;
+    margin-top: 24px !important;
+    padding: 12px 18px;
+    background: #b83280 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 10px;
+    font: inherit;
+    font-weight: 650;
+    text-align: center;
+    cursor: pointer;
+}
+
+.pf-bag-summary-card button[name="next"][value="checkout"]:hover {
+    background: #922466 !important;
+}
+
+.pf-bag-secondary-link {
+    display: block;
+    margin-top: 20px;
+    text-align: center;
+}
+

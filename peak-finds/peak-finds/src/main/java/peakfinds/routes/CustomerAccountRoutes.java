@@ -360,14 +360,25 @@ public final class CustomerAccountRoutes {
 
                     </form>
 
-                    <p style="margin-top:25px;
-                              text-align:center;">
-                        <a href="/customer">
-                            Back to Dashboard
-                        </a>
-                    </p>
+<div style="display:flex; flex-direction:column; gap:16px; margin-top:24px; width:100%%;">
 
-                </section>
+    <a href="/account/deactivate"
+       style="display:block; box-sizing:border-box; width:100%%;
+              padding:14px 20px; text-align:center;
+              background:white; color:#b83280;
+              border:2px solid #b83280; border-radius:10px;
+              text-decoration:none; font-weight:600;">
+        Deactivate My Account
+    </a>
+
+    <a href="/customer"
+       style="display:block; text-align:center;
+              color:#b83280; text-decoration:underline;">
+        Back to Dashboard
+    </a>
+
+</div>
+</section>
                 """;
 
         return form.formatted(
