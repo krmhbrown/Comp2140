@@ -60,26 +60,92 @@ public final class ProductRoutes {
         return Response.html(Layout.page(req.session(), "Catalogue", body));
     }
 
-    private Response details(Request req) {
-        Product p = Product.findActiveById(ctx.db(), req.pathLong("id"));
-        if (p == null) {
-            return peakfinds.web.Router.errorPage(req.session(), 404, "Product not found", "That bag is not available.");
-        }
-        StringBuilder html = new StringBuilder("<p><a href=\"/catalogue\">&larr; Back to catalogue</a></p>");
-        html.append("<h1>").append(Html.esc(p.getName())).append("</h1>");
-        for (String path : p.getImages()) {
-            html.append("<img class=\"product-thumb\" src=\"/static/").append(Html.esc(path)).append("\" alt=\"")
-                    .append(Html.esc(p.getName())).append("\">");
-        }
-        html.append("<p>").append(Html.esc(nz(p.getDescription()))).append("</p>")
-                .append("<p><strong>Colour:</strong> ").append(Html.esc(nz(p.getColour()))).append("<br>")
-                .append("<strong>Category:</strong> ").append(Html.esc(p.getCategory())).append("<br>")
-                .append("<strong>Price:</strong> ").append(price(p)).append("<br>")
-                .append("<strong>Availability:</strong> ")
-                .append(p.isOutOfStock() ? "Out of Stock" : "In Stock (" + p.getStockQuantity() + " available)")
-                .append("</p>");
-        return Response.html(Layout.page(req.session(), p.getName(), html.toString()));
+    
+private Response details(Request req) {
+    Product p = Product.findActiveById(ctx.db(), req.pathLong("id"));
+
+    if (p == null) {
+        return peakfinds.web.Router.errorPage(
+                req.session(),
+                404,
+                "Product not found",
+                "That bag is not available."
+        );
     }
+
+    StringBuilder html = new StringBuilder(
+            "<p><a href=\"/catalogue\">&larr; Back to catalogue</a></p>"
+    );
+
+    html.append("<h1>")
+            .append(Html.esc(p.getName()))
+            .append("</h1>");
+
+    // Display the product images.
+    for (String path : p.getImages()) {
+        html.append("<img class=\"product-thumb\" src=\"/static/")
+                .append(Html.esc(path))
+                .append("\" alt=\"")
+                .append(Html.esc(p.getName()))
+                .append("\">");
+    }
+
+    // Display the product information.
+    html.append("<p>")
+            .append(Html.esc(nz(p.getDescription())))
+            .append("</p>")
+            .append("<p><strong>Colour:</strong> ")
+            .append(Html.esc(nz(p.getColour())))
+            .append("<br>")
+            .append("<strong>Category:</strong> ")
+            .append(Html.esc(p.getCategory()))
+            .append("<br>")
+            .append("<strong>Price:</strong> ")
+            .append(price(p))
+            .append("<br>")
+            .append("<strong>Availability:</strong> ")
+            .append(p.isOutOfStock()
+                    ? "Out of Stock"
+                    : "In Stock (" + p.getStockQuantity() + " available)")
+            .append("</p>");
+
+    // Shopping Cart integration.
+    if (p.isOutOfStock()) {
+
+        html.append("<button class=\"button\" disabled>")
+                .append("Out of Stock")
+                .append("</button>");
+
+    } else if (req.session() != null
+            && req.session().customerId() != null) {
+
+        html.append("<form method=\"post\" action=\"/cart/add\">")
+                .append(Layout.csrfField(req.session()))
+                .append("<input type=\"hidden\" name=\"product_id\" value=\"")
+                .append(p.getProductId())
+                .append("\">")
+                .append("<p><label for=\"product-quantity\">Quantity</label></p>")
+                .append("<input id=\"product-quantity\" type=\"number\" ")
+                .append("name=\"quantity\" value=\"1\" min=\"1\" max=\"")
+                .append(p.getStockQuantity())
+                .append("\" required>")
+                .append("<p><button type=\"submit\" class=\"button\">")
+                .append("Add to Cart")
+                .append("</button></p>")
+                .append("</form>");
+
+    } else {
+
+        html.append("<p><a class=\"button\" href=\"/login\">")
+                .append("Log in to Add to Cart")
+                .append("</a></p>");
+    }
+
+    return Response.html(
+            Layout.page(req.session(), p.getName(), html.toString())
+    );
+}
+
 
     // ---------------- owner pages ----------------
 
