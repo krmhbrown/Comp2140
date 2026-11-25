@@ -1,6 +1,6 @@
 //Author: Karimah Brown
 //Date of Creation: 24/11/2026
-//Date of last modification: 24/11/2026
+//Date of last modification: 25/11/2026
 
 
 package peakfinds.routes;
@@ -43,6 +43,8 @@ public class SupplierRoutes implements Router.Handler {
         r.post("/owner/suppliers/{id}/restock", Action.MANAGE_RESTOCK_ORDERS, pages);
         r.get("/owner/restock-orders", Action.MANAGE_RESTOCK_ORDERS, pages);
         r.post("/owner/restock-orders/{id}/received", Action.MANAGE_RESTOCK_ORDERS, pages);
+        r.get("/owner/restock-orders/{id}/cancel", Action.MANAGE_RESTOCK_ORDERS, pages);
+        r.post("/owner/restock-orders/{id}/cancel", Action.MANAGE_RESTOCK_ORDERS, pages);
     }
 
     //Picks which page to show from the web address. POST means a form was submitted.
@@ -65,6 +67,13 @@ public class SupplierRoutes implements Router.Handler {
         if (path.endsWith("/received")) {
             return receivedSubmit(req);
         }
+        if (path.endsWith("/cancel")){
+            if (formSubmitted){
+                return cancelSubmit(req);
+            }
+            return cancelConfirm(req);
+        }
+        
 
         //The rest of the pages are for one supplier, e.g. /owner/suppliers/3/edit
         Supplier supplier = Supplier.findById(db, getId(req));
@@ -254,13 +263,20 @@ public class SupplierRoutes implements Router.Handler {
         if (!error.isEmpty()) {
             html += "<p class=\"error\">" + error + "</p>";
         }
-        html += "<p>Enter a quantity for each product you are ordering. Leave the rest blank.</p>"
+        html += "<p>Enter a quantity for each product you are ordering.</p>"
                 + "<form class=\"form\" method=\"post\" action=\"/owner/suppliers/" + supplier.getId() + "/restock\">"
                 + Layout.csrfField(req.session());
         for (int i = 0; i < products.size(); i++) {
             Product p = products.get(i);
+
+            //Keeps what the owner typed if the form is shown again with an error
+            String typed = req.form("qty" + p.getProductId());
+            if (typed == null) {
+                typed = "";
+            }
             html += "<label>" + p.displayId() + " " + Html.esc(p.getName()) + " (in stock: " + p.getStockQuantity() + ")"
-                    + "<input name=\"qty" + p.getProductId() + "\" type=\"number\"></label>";
+                    + "<input name=\"qty" + p.getProductId() + "\" type=\"number\" min=\"1\" placeholder=\"Leave blank to skip\""
+                    + " value=\"" + Html.esc(typed) + "\"></label>";
         }
         html += "<button type=\"submit\" class=\"button\">Save restock order</button> "
                 + "<a href=\"/owner/suppliers\">Cancel</a></form>";
@@ -281,7 +297,8 @@ public class SupplierRoutes implements Router.Handler {
             return restockForm(req, supplier, "Enter a quantity for at least one product.");
         }
         if (!order.createRestockOrder(db)) {
-            return restockForm(req, supplier, "Each quantity must be a whole number of at least 1.");
+            return restockForm(req, supplier, "Each quantity must be a whole number of at least 1." 
+                    + "Leave products you are not ordering blank.");
         }
         return Response.redirect("/owner/restock-orders");
     }
@@ -304,7 +321,8 @@ public class SupplierRoutes implements Router.Handler {
             }
             String status = "Ordered";
             String button = "<form method=\"post\" action=\"/owner/restock-orders/" + o.getId() + "/received\">"
-                    + Layout.csrfField(req.session()) + "<button type=\"submit\" class=\"button\">Mark received</button></form>";
+                    + Layout.csrfField(req.session()) + "<button type=\"submit\" class=\"button\">Mark received</button></form>"
+                    + "<a href=\"/owner/restock-orders/" + o.getId() + "/cancel\">Cancel order</a>";
             if (o.isReceived()) {
                 status = "Received";
                 button = "";
@@ -323,6 +341,30 @@ public class SupplierRoutes implements Router.Handler {
             return Response.redirect("/owner/restock-orders");
         }
         return message(req, "Already received", "This restock order has already been marked as received.");
+    }
+    
+        //Asks the owner to confirm before cancelling a restock order.
+    private Response cancelConfirm(Request req) {
+        RestockOrder order = RestockOrder.findById(db, getId(req));
+        if (order == null || order.isReceived()) {
+            return message(req, "Cannot cancel", "Only restock orders that have not been received can be cancelled.");
+        }
+        String html = "<h1>Cancel restock order</h1>"
+                + "<p>Cancel " + order.getOrderID() + " from " + Html.esc(order.getSupplierName()) + "? "
+                + "It will be removed from the restock history.</p>"
+                + "<form method=\"post\" action=\"/owner/restock-orders/" + order.getId() + "/cancel\">"
+                + Layout.csrfField(req.session())
+                + "<button type=\"submit\" class=\"button\">Yes, cancel order</button> "
+                + "<a href=\"/owner/restock-orders\">Go back</a></form>";
+        return page(req, "Cancel restock order", html);
+    }
+
+    private Response cancelSubmit(Request req) {
+        RestockOrder order = RestockOrder.findById(db, getId(req));
+        if (order != null && order.cancelOrder(db)) {
+            return Response.redirect("/owner/restock-orders");
+        }
+        return message(req, "Cannot cancel", "Only restock orders that have not been received can be cancelled.");
     }
 
     //Puts the page inside the website's layout (header and menu).

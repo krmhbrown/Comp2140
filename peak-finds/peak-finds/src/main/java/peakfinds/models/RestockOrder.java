@@ -1,12 +1,12 @@
 //Author: Karimah Brown
 //Date of Creation: 20/11/2026
-//Date of last modification: 24/11/2026
+//Date of last modification: 25/11/2026
 
 /* RestockOrder class that represents a restock order in the system.
 It contains information about the order details, including the supplier,
 products, quantities and date. The class provides methods to save restock
-orders in the database, list them from newest to oldest, and mark them as
-received, which adds the quantities to each product's stock.*/
+orders in the database, list them from newest to oldest, cancel them and 
+mark them as received, which adds the quantities to each product's stock.*/
 
 package peakfinds.models;
 
@@ -88,6 +88,19 @@ public class RestockOrder {
                     quantitiesOrdered.get(i), productsOrdered.get(i));
         }
         isReceived = true;
+        return true;
+    }
+
+    //Cancels the order by removing it from the database. Returns false if it was already received.
+    public boolean cancelOrder(Database db) {
+        if (isReceived) {
+            return false;
+        }
+        db.update("DELETE FROM restock_order_items WHERE restock_id IN " + "(SELECT restock_id FROM restock_orders WHERE restock_id = ? AND status = 'Ordered')", id);
+        int deleted = db.update("DELETE FROM restock_orders WHERE restock_id = ? AND status = 'Ordered'", id);
+        if (deleted == 0) {
+            return false;
+        }
         return true;
     }
 
