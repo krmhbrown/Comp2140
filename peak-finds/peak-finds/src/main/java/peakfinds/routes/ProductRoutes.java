@@ -10,6 +10,7 @@ import peakfinds.auth.ValidationException;
 import peakfinds.auth.Validator;
 import peakfinds.database.Rows;
 import peakfinds.models.Product;
+import peakfinds.models.Supplier;
 import peakfinds.services.Storage;
 import peakfinds.ui.Layout;
 import peakfinds.web.BadRequestException;
@@ -208,6 +209,9 @@ private Response details(Request req) {
 
     private Response create(Request req) {
         Product p = read(req, new Product());
+        if (needsSupplierConfirm(req, p)) {
+            return confirmNoSupplier(req, "/owner/products/new");
+        }
         p.setStockQuantity(Validator.intInRange(req.form("stock"), "Starting stock", 0, 100000));
         try {
             p.addProduct(ctx.db());
@@ -217,12 +221,40 @@ private Response details(Request req) {
         return Response.redirect("/owner/products");
     }
 
+    //True if no supplier was ticked and the owner has not yet said it is okay.
+    private boolean needsSupplierConfirm(Request req, Product p) {
+        return p.getSupplierIds().isEmpty() && req.form("confirmNoSupplier") == null;
+    }
+
+    //Prompts the owner to choose a supplier, or save without one (Supplier Product Management, TC-4.3).
+    //Everything they typed is sent again in hidden fields, so nothing has to be re-entered.
+    private Response confirmNoSupplier(Request req, String action) {
+        StringBuilder f = new StringBuilder("<h1>Add a supplier?</h1>")
+                .append("<p>This product has no supplier. Choose a supplier so the low-stock alert can show who to reorder from. ")
+                .append("You can also save it now and link a supplier later.</p>")
+                .append("<form method=\"post\" action=\"").append(action).append("\">").append(Layout.csrfField(req.session()));
+        String[] fields = {"name", "description", "colour", "category", "price", "stock", "reorder", "images"};
+        for (String name : fields) {
+            String value = req.form(name);
+            if (value != null) {
+                f.append("<input type=\"hidden\" name=\"").append(name).append("\" value=\"").append(Html.esc(value)).append("\">");
+            }
+        }
+        f.append("<input type=\"hidden\" name=\"confirmNoSupplier\" value=\"yes\">")
+                .append("<a class=\"button\" href=\"").append(action).append("\">Go back and choose a supplier</a> ")
+                .append("<button type=\"submit\">Save without a supplier</button></form>");
+        return Response.html(Layout.page(req.session(), "Add a supplier?", f.toString()));
+    }
+
     private Response save(Request req) {
         Product existing = Product.findActiveById(ctx.db(), req.pathLong("id"));
         if (existing == null) {
             throw new BadRequestException("That product does not exist.");
         }
         Product p = read(req, existing);
+        if (needsSupplierConfirm(req, p)) {
+            return confirmNoSupplier(req, "/owner/products/" + existing.getProductId() + "/edit");
+        }
         try {
             p.editProduct(ctx.db());
         } catch (RuntimeException e) {
@@ -267,7 +299,14 @@ private Response details(Request req) {
         StringBuilder html = new StringBuilder("<h1>Low-stock alerts</h1><h2>Products at or below reorder level</h2><ul>");
         List<Product> low = storage.lowStockProducts();
         for (Product p : low) {
-            html.append("<li>").append(Html.esc(p.lowStockAlertText(ctx.db()))).append("</li>");
+            html.append("<li>").append(Html.esc(p.lowStockAlertText(ctx.db())));
+            //A link to start a restock order with each of this product's suppliers (Supplier Product Management)
+            List<Supplier> suppliers = Supplier.getSuppliersForProduct(ctx.db(), p);
+            for (Supplier s : suppliers) {
+                html.append("<br><a href=\"/owner/suppliers/").append(s.getId()).append("/restock\">Restock from ")
+                        .append(Html.esc(s.getName())).append("</a>");
+            }
+            html.append("</li>");
         }
         html.append("</ul>");
         if (low.isEmpty()) {
