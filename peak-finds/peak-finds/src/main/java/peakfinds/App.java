@@ -62,7 +62,7 @@ public final class App {
         //   peakfinds.routes.ProductRoutes.register(ctx);      // products (feature/products)
         //   peakfinds.routes.OrderRoutes.register(ctx);        // orders (feature/orders)
         //   peakfinds.routes.CustomerAccountRoutes.register(ctx); // sign-up, cart, account (feature/customers)
-        //   peakfinds.routes.SupplierRoutes.register(ctx);     // suppliers and restock (feature/suppliers)
+        peakfinds.routes.SupplierRoutes.register(ctx);     // suppliers and restock (feature/suppliers)
         //   peakfinds.routes.DeliveryAdminRoutes.register(ctx);// bearers and deliveries (feature/delivery)
 
         return ctx;
