@@ -152,10 +152,10 @@ public class DeliveryModel {
     public List<Map<String, Object>> getAssignableOrders() {
         return db.query("""
             SELECT o.* FROM orders o
-            WHERE o.order_status = ? AND NOT EXISTS (
+            WHERE o.order_status IN (?, ?) AND NOT EXISTS ( 
                 SELECT 1 FROM deliveries d WHERE d.order_id = o.order_id)
             ORDER BY o.order_id
-            """, Constants.ORDER_CONFIRMED);
+            """, Constants.ORDER_CONFIRMED, Constants.ORDER_PACKAGING);
     }
 
     public Optional<Map<String, Object>> getOrder(long orderId) {

@@ -36,6 +36,7 @@ public final class OrderRoutes {
         router.get("/orders/new", Action.PLACE_ORDER, r::newOrderForm);
         router.post("/orders/new", Action.PLACE_ORDER, r::placeOrder);
         router.get("/orders/{id}", Action.VIEW_OWN_ORDERS, r::myOrder);
+
         router.get("/orders/{id}/cancel", Action.CANCEL_OWN_ORDER,
                 req -> r.confirmCancel(req, false));
         router.post("/orders/{id}/cancel", Action.CANCEL_OWN_ORDER,
@@ -43,10 +44,12 @@ public final class OrderRoutes {
 
         router.get("/owner/orders", Action.MANAGE_ORDERS, r::ownerList);
         router.get("/owner/orders/{id}", Action.MANAGE_ORDERS, r::ownerOrder);
+
         router.post("/owner/orders/{id}/confirm-payment",
                 Action.CONFIRM_PAYMENT, r::confirmPayment);
         router.post("/owner/orders/{id}/packaging",
                 Action.MANAGE_ORDERS, r::packaging);
+
         router.get("/owner/orders/{id}/cancel", Action.MANAGE_ORDERS,
                 req -> r.confirmCancel(req, true));
         router.post("/owner/orders/{id}/cancel", Action.MANAGE_ORDERS,
@@ -55,11 +58,15 @@ public final class OrderRoutes {
 
     private Response myOrders(Request req) {
         Session s = req.session();
+
         StringBuilder html = new StringBuilder(
                 "<h1>My orders</h1>"
-                + "<p><a class=\"button\" href=\"/cart\">Place a new order</a></p>");
+                + "<p><a class=\"button\" href=\"/cart\">Place a new order</a></p>"
+        );
 
-        List<Order> orders = Order.findForCustomer(ctx.db(), customerId(s));
+        List<Order> orders = Order.findForCustomer(
+                ctx.db(), customerId(s)
+        );
 
         if (orders.isEmpty()) {
             html.append("<p>You have not placed any orders yet.</p>");
@@ -67,7 +74,9 @@ public final class OrderRoutes {
             html.append(orderTable(orders, "/orders/", false));
         }
 
-        return Response.html(Layout.page(s, "My orders", html.toString()));
+        return Response.html(
+                Layout.page(s, "My orders", html.toString())
+        );
     }
 
     private Response newOrderForm(Request req) {
@@ -80,8 +89,7 @@ public final class OrderRoutes {
 
         CartService cart = new CartService(ctx.db());
 
-        // Reject checkout when the cart is empty, stock is invalid,
-        // or a valid payment method has not been saved.
+        // Require valid stock and a saved payment method.
         cart.validateForCheckout(customerId);
 
         String payment = Validator.oneOf(
@@ -134,37 +142,47 @@ public final class OrderRoutes {
                 .append(money(cart.getTotal(customerId).doubleValue()))
                 .append("</p>");
 
-        f.append("<p>Delivery charges are not included in this item total.</p>");
+        f.append(
+                "<p>Delivery charges are not included in this item total.</p>"
+        );
 
         f.append("<label>Delivery address<br>")
                 .append("<input class=\"full-width\" name=\"address\" required value=\"")
-                .append(Html.esc(nz(Rows.str(customer, "delivery_address"))))
+                .append(Html.esc(nz(
+                        Rows.str(customer, "delivery_address")
+                )))
                 .append("\"></label><br>");
 
         f.append("<label>Contact number<br>")
                 .append("<input name=\"phone\" required value=\"")
-                .append(Html.esc(nz(Rows.str(customer, "phone_number"))))
+                .append(Html.esc(nz(
+                        Rows.str(customer, "phone_number")
+                )))
                 .append("\"></label>");
 
-        // Always display the payment method saved in the cart.
-        // Do not default to Cash on Delivery.
+        // Display the saved payment method.
+        // Never default to Cash on Delivery.
         f.append("<p><strong>Payment method:</strong> ")
                 .append(Html.esc(payment))
                 .append("</p>");
 
-        f.append("<p><a href=\"/cart\">Change payment method in shopping bag</a></p>");
+        f.append(
+                "<p><a href=\"/cart\">Change payment method in shopping bag</a></p>"
+        );
 
         f.append("<button class=\"button\" type=\"submit\">Place order</button>")
                 .append(" <a href=\"/cart\">Cancel</a></form>");
 
-        return Response.html(Layout.page(s, "Place an order", f.toString()));
+        return Response.html(
+                Layout.page(s, "Place an order", f.toString())
+        );
     }
 
     private Response placeOrder(Request req) {
         Session s = req.session();
         long customerId = customerId(s);
 
-        // Prevent customers from bypassing the cart checkout process.
+        // Prevent bypassing the shopping cart.
         if (!"1".equals(req.form("from_cart"))) {
             throw new ValidationException(
                     "Please select a payment method in your shopping bag before checkout."
@@ -173,8 +191,7 @@ public final class OrderRoutes {
 
         CartService cart = new CartService(ctx.db());
 
-        // Server-side validation is required even if the checkout page
-        // previously displayed correctly.
+        // Validate again when the order is submitted.
         cart.validateForCheckout(customerId);
 
         String payment = Validator.oneOf(
@@ -184,7 +201,9 @@ public final class OrderRoutes {
         );
 
         String address = Validator.text(
-                req.form("address"), "Delivery address", 300
+                req.form("address"),
+                "Delivery address",
+                300
         );
 
         String phone = Validator.phone(req.form("phone"));
@@ -201,7 +220,8 @@ public final class OrderRoutes {
 
         for (CartItem item : cart.getItems(customerId)) {
             Product product = Product.findActiveById(
-                    ctx.db(), item.productId()
+                    ctx.db(),
+                    item.productId()
             );
 
             if (product == null) {
@@ -213,19 +233,27 @@ public final class OrderRoutes {
             order.addItem(product, item.quantity());
         }
 
-        // Only create the order after payment and stock validation.
+        // Save the order only after validation succeeds.
         long id = order.placeOrder(ctx.db(), s.userId());
 
-        // Clear the cart only after the order has been saved.
+        // Clear the shopping cart after successful order creation.
         cart.clearCart(customerId);
 
-        // Reset the saved payment preference for the next order.
+        // Reset the payment preference for the next order.
         ctx.db().update(
                 "UPDATE carts SET payment_method = NULL WHERE customer_id = ?",
                 customerId
         );
 
-        return Response.redirect("/orders/" + id + "?placed=1");
+        // Preserve the invoice email functionality from main.
+        peakfinds.services.OrderEmails.sendInvoice(
+                ctx,
+                Order.findById(ctx.db(), id)
+        );
+
+        return Response.redirect(
+                "/orders/" + id + "?placed=1"
+        );
     }
 
     private Response myOrder(Request req) {
@@ -234,7 +262,10 @@ public final class OrderRoutes {
 
         if (o == null) {
             return peakfinds.web.Router.errorPage(
-                    s, 404, "Order not found", "That order does not exist."
+                    s,
+                    404,
+                    "Order not found",
+                    "That order does not exist."
             );
         }
 
@@ -247,7 +278,9 @@ public final class OrderRoutes {
                     .append(o.displayId())
                     .append(" has been placed.");
 
-            if (Constants.ORDER_AWAITING_PAYMENT.equals(o.getOrderStatus())) {
+            if (Constants.ORDER_AWAITING_PAYMENT.equals(
+                    o.getOrderStatus())) {
+
                 html.append(
                         " Please make your bank transfer. "
                         + "Your order will be confirmed once payment is received."
@@ -265,11 +298,11 @@ public final class OrderRoutes {
 
         html.append(details(o));
 
-        if (o.canCancel(ctx.db())) {
-            html.append("<p><a class=\"danger\" href=\"/orders/")
-                    .append(o.getOrderId())
-                    .append("/cancel\">Cancel this order</a></p>");
-        }
+        // Keep cancellation accessible so a refusal message
+        // can be displayed when cancellation is not allowed.
+        html.append("<p><a class=\"danger\" href=\"/orders/")
+                .append(o.getOrderId())
+                .append("/cancel\">Cancel this order</a></p>");
 
         return Response.html(
                 Layout.page(s, "Order " + o.displayId(), html.toString())
@@ -282,29 +315,36 @@ public final class OrderRoutes {
                 : ownOrder(req);
 
         if (o == null) {
-            throw new BadRequestException("That order does not exist.");
+            throw new BadRequestException(
+                    "That order does not exist."
+            );
         }
 
-        String base = (owner ? "/owner/orders/" : "/orders/")
+        String base =
+                (owner ? "/owner/orders/" : "/orders/")
                 + o.getOrderId();
 
         if (!o.canCancel(ctx.db())) {
-            String why = Constants.ORDER_CANCELLED.equals(o.getOrderStatus())
+            String why =
+                    Constants.ORDER_CANCELLED.equals(o.getOrderStatus())
                     ? "This order is already cancelled."
                     : "This order can no longer be cancelled because it has entered delivery.";
 
-            return Response.html(Layout.page(
-                    req.session(),
-                    "Cancel order",
-                    "<h1>Cancel order</h1><p class=\"error\">"
-                    + why
-                    + "</p><p><a href=\""
-                    + base
-                    + "\">Back to the order</a></p>"
-            ));
+            return Response.html(
+                    Layout.page(
+                            req.session(),
+                            "Cancel order",
+                            "<h1>Cancel order</h1><p class=\"error\">"
+                            + why
+                            + "</p><p><a href=\""
+                            + base
+                            + "\">Back to the order</a></p>"
+                    )
+            );
         }
 
-        String html = "<h1>Cancel order?</h1>"
+        String html =
+                "<h1>Cancel order?</h1>"
                 + "<p>Cancel order <strong>"
                 + o.displayId()
                 + "</strong> ("
@@ -328,10 +368,15 @@ public final class OrderRoutes {
                 : ownOrder(req);
 
         if (o == null) {
-            throw new BadRequestException("That order does not exist.");
+            throw new BadRequestException(
+                    "That order does not exist."
+            );
         }
 
         o.cancelOrder(ctx.db(), req.session().userId());
+
+        // Preserve cancellation emails from main.
+        peakfinds.services.OrderEmails.sendCancellation(ctx, o);
 
         return Response.redirect(
                 (owner ? "/owner/orders/" : "/orders/")
@@ -341,13 +386,17 @@ public final class OrderRoutes {
 
     private Response ownerList(Request req) {
         Session s = req.session();
+
         String status = Validator.clean(req.query("status"));
 
-        String filter = Constants.ORDER_STATUSES.contains(status)
-                ? status : null;
+        String filter =
+                Constants.ORDER_STATUSES.contains(status)
+                ? status
+                : null;
 
         StringBuilder html = new StringBuilder(
-                "<h1>Orders</h1><p>Show: <a href=\"/owner/orders\">All</a>"
+                "<h1>Orders</h1>"
+                + "<p>Show: <a href=\"/owner/orders\">All</a>"
         );
 
         for (String st : Constants.ORDER_STATUSES) {
@@ -364,8 +413,8 @@ public final class OrderRoutes {
 
         html.append(
                 orders.isEmpty()
-                        ? "<p>No orders yet.</p>"
-                        : orderTable(orders, "/owner/orders/", true)
+                ? "<p>No orders yet.</p>"
+                : orderTable(orders, "/owner/orders/", true)
         );
 
         return Response.html(
@@ -375,11 +424,17 @@ public final class OrderRoutes {
 
     private Response ownerOrder(Request req) {
         Session s = req.session();
-        Order o = Order.findById(ctx.db(), req.pathLong("id"));
+
+        Order o = Order.findById(
+                ctx.db(), req.pathLong("id")
+        );
 
         if (o == null) {
             return peakfinds.web.Router.errorPage(
-                    s, 404, "Order not found", "That order does not exist."
+                    s,
+                    404,
+                    "Order not found",
+                    "That order does not exist."
             );
         }
 
@@ -396,28 +451,34 @@ public final class OrderRoutes {
         html.append(details(o));
         html.append("<p>");
 
-        if (Constants.ORDER_AWAITING_PAYMENT.equals(o.getOrderStatus())) {
+        if (Constants.ORDER_AWAITING_PAYMENT.equals(
+                o.getOrderStatus())) {
+
             html.append(postButton(
                     s,
-                    "/owner/orders/" + o.getOrderId() + "/confirm-payment",
+                    "/owner/orders/" + o.getOrderId()
+                    + "/confirm-payment",
                     "Confirm bank transfer received"
             ));
         }
 
-        if (Constants.ORDER_CONFIRMED.equals(o.getOrderStatus())
+        if (Constants.ORDER_CONFIRMED.equals(
+                o.getOrderStatus())
                 && !o.isInDelivery(ctx.db())) {
+
             html.append(postButton(
                     s,
-                    "/owner/orders/" + o.getOrderId() + "/packaging",
+                    "/owner/orders/" + o.getOrderId()
+                    + "/packaging",
                     "Mark as Order Packaging"
             ));
         }
 
-        if (o.canCancel(ctx.db())) {
-            html.append(" <a class=\"danger\" href=\"/owner/orders/")
-                    .append(o.getOrderId())
-                    .append("/cancel\">Cancel this order</a>");
-        }
+        // Keep cancellation accessible so the refusal
+        // message can be shown when cancellation is disallowed.
+        html.append(" <a class=\"danger\" href=\"/owner/orders/")
+                .append(o.getOrderId())
+                .append("/cancel\">Cancel this order</a>");
 
         html.append("</p>");
 
@@ -427,10 +488,14 @@ public final class OrderRoutes {
     }
 
     private Response confirmPayment(Request req) {
-        Order o = Order.findById(ctx.db(), req.pathLong("id"));
+        Order o = Order.findById(
+                ctx.db(), req.pathLong("id")
+        );
 
         if (o == null) {
-            throw new BadRequestException("That order does not exist.");
+            throw new BadRequestException(
+                    "That order does not exist."
+            );
         }
 
         o.confirmPayment(ctx.db(), req.session().userId());
@@ -441,10 +506,14 @@ public final class OrderRoutes {
     }
 
     private Response packaging(Request req) {
-        Order o = Order.findById(ctx.db(), req.pathLong("id"));
+        Order o = Order.findById(
+                ctx.db(), req.pathLong("id")
+        );
 
         if (o == null) {
-            throw new BadRequestException("That order does not exist.");
+            throw new BadRequestException(
+                    "That order does not exist."
+            );
         }
 
         o.updateStatus(
@@ -485,7 +554,9 @@ public final class OrderRoutes {
 
         for (Order.OrderItem it : o.getItems()) {
             html.append("<tr><td>")
-                    .append(String.format("P%03d", it.getProductId()))
+                    .append(String.format(
+                            "P%03d", it.getProductId()
+                    ))
                     .append("</td><td>")
                     .append(Html.esc(it.getProductName()))
                     .append("</td><td>")
@@ -497,7 +568,9 @@ public final class OrderRoutes {
                     .append("</td></tr>");
         }
 
-        html.append("<tr><td colspan=\"4\"><strong>Total</strong></td>")
+        html.append(
+                "<tr><td colspan=\"4\"><strong>Total</strong></td>"
+        )
                 .append("<td><strong>")
                 .append(money(o.getTotalAmount()))
                 .append("</strong></td></tr></table>");
@@ -509,9 +582,11 @@ public final class OrderRoutes {
                     .append(Html.esc(h.status()))
                     .append(" &ndash; ")
                     .append(Html.esc(nz(h.changedAt())))
-                    .append(h.note() == null
+                    .append(
+                            h.note() == null
                             ? ""
-                            : " (" + Html.esc(h.note()) + ")")
+                            : " (" + Html.esc(h.note()) + ")"
+                    )
                     .append("</li>");
         }
 
@@ -533,7 +608,9 @@ public final class OrderRoutes {
             t.append("<th>Customer</th>");
         }
 
-        t.append("<th>Total</th><th>Payment</th><th>Status</th></tr>");
+        t.append(
+                "<th>Total</th><th>Payment</th><th>Status</th></tr>"
+        );
 
         for (Order o : orders) {
             t.append("<tr><td><a href=\"")
