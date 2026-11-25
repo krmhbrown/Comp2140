@@ -67,12 +67,28 @@ public final class FoundationTests {
         }
 
         @Override
-        public List<Map<String, Object>> query(String sql, Object... params) {
-            if (sql.contains("FROM users u")) {
-                Map<String, Object> row = usersByEmail.get((String) params[0]);
-                return row == null ? List.of() : List.of(row);
-            }
-            throw new UnsupportedOperationException(sql);
+    public List<Map<String, Object>> query(
+            String sql, Object... params) {
+
+        if (sql.contains("FROM users u")) {
+
+            Map<String, Object> row = usersByEmail.get((String) params[0]);
+            return row == null
+                ? List.of()
+                : List.of(row);
+        }
+
+        // Feature 07: The foundation fake database
+        // represents an empty shop.
+
+        if (sql.contains("FROM deliveries d")
+                || sql.contains("FROM orders o")
+                || sql.contains("FROM bearers")
+                || sql.contains("FROM notifications")) {
+            return List.of();
+        }
+
+        throw new UnsupportedOperationException(sql);
         }
     }
 

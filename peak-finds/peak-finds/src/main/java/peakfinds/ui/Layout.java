@@ -51,6 +51,7 @@ public final class Layout {
                 link(nav, "/owner/products", "Products");
                 link(nav, "/owner/suppliers", "Suppliers");
                 link(nav, "/owner/deliveries", "Deliveries");
+                link(nav, "/owner/bearers", "Bearers");
             }
             case Constants.ROLE_BEARER -> link(nav, "/delivery", "My deliveries");
             default -> {

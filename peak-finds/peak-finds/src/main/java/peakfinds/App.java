@@ -39,6 +39,9 @@ public final class App {
 
         AppContext ctx = createContext(db, config);
 
+        // Feature 07: Start the delivery email worker.
+        new peakfinds.services.DeliveryEmailWorker(db, peakfinds.services.DeliveryEmailWorker.smtp(config)).start();
+
         HttpServer server = HttpServer.create(new InetSocketAddress(config.port()), 0);
         server.createContext("/", ctx.router());
         server.setExecutor(Executors.newFixedThreadPool(16));
@@ -58,7 +61,10 @@ public final class App {
         AuthRoutes.register(ctx);
         OwnerRoutes.register(ctx);      // owner dashboard + placeholder pages
         CustomerRoutes.register(ctx);   // customer home + placeholder pages
-        DeliveryRoutes.register(ctx);   // bearer home + placeholder pages
+        // Feature 07: Shared delivery service.
+        var deliveryService =
+            new peakfinds.services.DeliveryService(db);
+        DeliveryRoutes.register(ctx, deliveryService);
 
 
         // Customer Management and Cart
@@ -73,7 +79,8 @@ public final class App {
          peakfinds.routes.OrderRoutes.register(ctx);        // orders (feature/orders)
         //   peakfinds.routes.CustomerAccountRoutes.register(ctx); // sign-up, cart, account (feature/customers)
         peakfinds.routes.SupplierRoutes.register(ctx);     // suppliers and restock (feature/suppliers)
-        //   peakfinds.routes.DeliveryAdminRoutes.register(ctx);// bearers and deliveries (feature/delivery)
+        peakfinds.routes.DeliveryAdminRoutes.register(ctx, deliveryService);
+        peakfinds.routes.BearerAdminRoutes.register(ctx);
 
         return ctx;
     }
