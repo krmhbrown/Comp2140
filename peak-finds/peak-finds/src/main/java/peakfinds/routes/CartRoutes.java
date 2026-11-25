@@ -84,6 +84,18 @@ public final class CartRoutes {
         int itemCount = items.stream().mapToInt(CartItem::quantity).sum();
         String csrf = Html.esc(req.session().csrfToken());
         String selectedMethod = cart.getPaymentMethod(customerId);
+        boolean validStock = items.stream().allMatch(item ->
+                item.active() && item.quantity() > 0 && item.quantity() <= item.availableStock());
+        String checkoutControl;
+        if (items.isEmpty()) {
+            checkoutControl = "<p class=\"pf-bag-checkout-note\">Add a product before checking out.</p>";
+        } else if (!validStock) {
+            checkoutControl = "<p class=\"pf-bag-warning\">Update unavailable items or quantities before checkout.</p>";
+        } else if (!"Cash on Delivery".equals(selectedMethod) && !"Bank Transfer".equals(selectedMethod)) {
+            checkoutControl = "<p class=\"pf-bag-checkout-note\">Select and save a payment method to continue.</p>";
+        } else {
+            checkoutControl = "<a href=\"/orders/new?from_cart=1\" class=\"pf-bag-primary\">Proceed to Checkout</a>";
+        }
 
         StringBuilder html = new StringBuilder();
         html.append("""
@@ -214,7 +226,7 @@ public final class CartRoutes {
                   </select>
                   <button type="submit" class="pf-bag-primary">Save Payment Method</button>
                 </form>
-                <p class="pf-bag-checkout-note">Checkout and order confirmation will be connected to Order Management. No order is placed by saving a payment method.</p>
+                %s
                 <a href="/orders" class="pf-bag-secondary-link">View My Orders &rarr;</a>
               </div>
             </aside>
@@ -222,7 +234,7 @@ public final class CartRoutes {
             </section>
             """.formatted(itemCount, format(cart.getTotal(customerId)), format(cart.getTotal(customerId)), csrf,
                 "Cash on Delivery".equals(selectedMethod) ? "selected" : "",
-                "Bank Transfer".equals(selectedMethod) ? "selected" : ""));
+                "Bank Transfer".equals(selectedMethod) ? "selected" : "", checkoutControl));
         return html.toString();
     }
 
