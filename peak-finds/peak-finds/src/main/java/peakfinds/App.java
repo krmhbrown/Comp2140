@@ -69,10 +69,10 @@ public final class App {
         
         // Feature routes: each owner adds ONE line below once their routes class exists.
         // Registering the same URL as a placeholder replaces it. Example:
-         peakfinds.routes.ProductRoutes.register(ctx);
-             peakfinds.routes.OrderRoutes.register(ctx);        // orders (feature/orders)
+        peakfinds.routes.ProductRoutes.register(ctx);
+         peakfinds.routes.OrderRoutes.register(ctx);        // orders (feature/orders)
         //   peakfinds.routes.CustomerAccountRoutes.register(ctx); // sign-up, cart, account (feature/customers)
-        //   peakfinds.routes.SupplierRoutes.register(ctx);     // suppliers and restock (feature/suppliers)
+        peakfinds.routes.SupplierRoutes.register(ctx);     // suppliers and restock (feature/suppliers)
         //   peakfinds.routes.DeliveryAdminRoutes.register(ctx);// bearers and deliveries (feature/delivery)
 
         return ctx;

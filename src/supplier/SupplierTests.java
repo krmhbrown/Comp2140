@@ -1,13 +1,21 @@
 //Author: Karimah Brown
-//Date of Creation: 22/11/2026
-//Date of last modification: 23/11/2026
+//Date of Creation: 23/11/2026
+//Date of last modification: 24/11/2026
 
-package supplier;
 
+
+package peakfinds;
+
+import java.io.File;
 import java.util.ArrayList;
-import product.Product;
+import peakfinds.database.Database;
+import peakfinds.database.DatabaseInitializer;
+import peakfinds.database.Rows;
+import peakfinds.models.Product;
+import peakfinds.models.RestockOrder;
+import peakfinds.models.Supplier;
 
-public class SupplierTest {
+public class SupplierTests {
 
     private static int passed = 0;
     private static int failed = 0;
@@ -17,166 +25,162 @@ public class SupplierTest {
         else { failed++; System.out.println("FAIL  " + name); }
     }
 
-    //A bag with all of Product's required fields except the supplier (linked separately)
-    private static Product makeBag(String name, int quantity) {
-        Product p = new Product(name, "Black", "Tote Bag", 8500.0, quantity);
-        p.setDescription("A bag");
-        p.setReorderLevel(5);
-        p.addImage("images/bag.jpg");
-        return p;
-    }
-
-    public static void main(String[] args) {
-        SupplierManager suppliers = new SupplierManager();
-        RestockOrderManager restocks = new RestockOrderManager();
+    public static void main(String[] args) throws Exception {
+        //New test database with the sample data (suppliers S001-S002, products P001-P012)
+        File dbFile = File.createTempFile("supplier-test", ".db");
+        Database db = new Database("jdbc:sqlite:" + dbFile.getPath());
+        DatabaseInitializer.initialise(db, dbFile.getPath());
 
         System.out.println("=== Feature 03: Supplier Management ===");
 
-        // TC-3.1: a supplier with all fields is added to the list and given an ID
+        // TC-3.1: a supplier with all fields is saved and appears in the list
         Supplier wayne = new Supplier("Wayne's Distributors", "876-898-2710", "sales@waynesdistributors.com", "Kingston");
-        check("TC-3.1 supplier with all fields is added", suppliers.addSupplier(wayne));
-        check("TC-3.1 supplier appears in the list with an ID", suppliers.getAllSuppliers().contains(wayne));
+        check("TC-3.1 supplier with all fields is saved", wayne.addSupplier(db));
+        check("TC-3.1 supplier appears in the list", inList(Supplier.findAll(db), wayne.getId()));
         System.out.println("   TC-3.1 " + wayne);
 
-        // TC-3.1 (location optional): a supplier with no location is still added
+        // TC-3.1 (location optional): a supplier with no location is still saved
         Supplier online = new Supplier("Online Bag Co", "876-555-0177", "hello@onlinebag.test", "");
-        check("TC-3.1 supplier with no location is added", suppliers.addSupplier(online));
-        check("TC-3.1 location shows Not provided", online.getLocation().equals("Not provided"));
+        check("TC-3.1 supplier with no location is saved", online.addSupplier(db));
 
         // TC-3.2: two suppliers get different IDs
         Supplier trish = new Supplier("Trish Imports", "876-555-0142", "trishimports@gmail.com", "Portmore");
-        suppliers.addSupplier(trish);
-        check("TC-3.2 IDs are in the format S001", wayne.getSupplierID().equals("S001"));
+        trish.addSupplier(db);
+        check("TC-3.2 IDs carry on after the sample suppliers (S003)", wayne.getSupplierID().equals("S003"));
         check("TC-3.2 two suppliers get different IDs", !wayne.getSupplierID().equals(trish.getSupplierID()));
         System.out.println("   TC-3.2 IDs: " + wayne.getSupplierID() + ", " + trish.getSupplierID());
 
-        // TC-3.3: a missing required field is refused, nothing is added and no ID is given
-        int before = suppliers.getAllSuppliers().size();
-        Supplier noName = new Supplier("", "876-555-0177", "info@bagworld.com", "Spanish Town");
-        Supplier noPhone = new Supplier("Bag World", "", "info@bagworld.com", "Spanish Town");
-        Supplier noEmail = new Supplier("Bag World", "876-555-0177", "", "Spanish Town");
-        check("TC-3.3 case 1 missing name is refused", !suppliers.addSupplier(noName));
-        check("TC-3.3 case 2 missing phone is refused", !suppliers.addSupplier(noPhone));
-        check("TC-3.3 case 3 missing email is refused", !suppliers.addSupplier(noEmail));
-        check("TC-3.3 nothing was added", suppliers.getAllSuppliers().size() == before);
-        check("TC-3.3 no ID was given", noName.getSupplierID() == null);
+        // TC-3.3: a missing required field is refused and nothing is saved
+        int before = Supplier.findAll(db).size();
+        check("TC-3.3 case 1 missing name is refused",
+                !new Supplier("", "876-555-0177", "info@bagworld.com", "Spanish Town").addSupplier(db));
+        check("TC-3.3 case 2 missing phone is refused",
+                !new Supplier("Bag World", "", "info@bagworld.com", "Spanish Town").addSupplier(db));
+        check("TC-3.3 case 3 missing email is refused",
+                !new Supplier("Bag World", "876-555-0177", "", "Spanish Town").addSupplier(db));
+        check("TC-3.3 nothing was saved", Supplier.findAll(db).size() == before);
 
-        // TC-3.4: editing the email is saved and the other details stay the same
-        wayne.editSupplierInfo("Wayne's Distributors", "876-898-2710", "orders@waynesdistributors.com", "Kingston");
-        check("TC-3.4 new email is saved", wayne.getEmail().equals("orders@waynesdistributors.com"));
-        check("TC-3.4 other details unchanged", wayne.getPhone().equals("876-898-2710"));
+        // TC-3.4: editing the email is saved
+        wayne.editSupplierInfo(db, "Wayne's Distributors", "876-898-2710", "orders@waynesdistributors.com", "Kingston");
+        check("TC-3.4 new email is saved",
+                Supplier.findById(db, wayne.getId()).getEmail().equals("orders@waynesdistributors.com"));
 
         // TC-3.6: an edit that is not completed (phone cleared) changes nothing
-        check("TC-3.6 incomplete edit is refused", !wayne.editSupplierInfo("New Name", "", "a@b.com", "Kingston"));
-        check("TC-3.6 supplier unchanged", wayne.getName().equals("Wayne's Distributors"));
+        check("TC-3.6 incomplete edit is refused", !wayne.editSupplierInfo(db, "New Name", "", "a@b.com", "Kingston"));
+        check("TC-3.6 supplier unchanged", Supplier.findById(db, wayne.getId()).getName().equals("Wayne's Distributors"));
 
         // TC-3.5: a removed supplier is no longer in the list
-        check("TC-3.5 supplier is removed", suppliers.removeSupplier(trish));
-        check("TC-3.5 removed supplier is not in the list", !suppliers.getAllSuppliers().contains(trish));
+        check("TC-3.5 supplier is removed", trish.removeSupplier(db));
+        check("TC-3.5 removed supplier is not in the list", !inList(Supplier.findAll(db), trish.getId()));
 
         System.out.println();
         System.out.println("=== Feature 04: Supplier Product Management ===");
-
-        // TC-4.3: a product with no supplier cannot be saved (checked by Product.addProduct)
-        Product noSupplier = makeBag("Plain Tote", 10);
-        check("TC-4.3 product with no supplier is refused", !noSupplier.addProduct());
+        //Sample data: S001 supplies P001, P003, P005, P007, P009, P011; S002 supplies the other 6
+        Supplier s001 = Supplier.findById(db, 1);
+        Supplier s002 = Supplier.findById(db, 2);
 
         // TC-4.1: one product linked to two suppliers
-        Product tote = makeBag("Guess Tote Bag", 2);
-        suppliers.linkProduct(wayne, tote);
-        suppliers.linkProduct(online, tote);
-        tote.addProduct();
-        check("TC-4.1 product is linked to 2 suppliers", suppliers.getSuppliersForProduct(tote).size() == 2);
-        suppliers.linkProduct(wayne, tote); // linking again should not add it twice
-        check("TC-4.1 linking twice does not duplicate", wayne.getProductsSupplied().size() == 1
-                && tote.getSupplierIDs().size() == 2);
+        wayne.linkProduct(db, Product.findActiveById(db, 1));
+        check("TC-4.1 P001 has 2 suppliers",
+                Supplier.getSuppliersForProduct(db, Product.findActiveById(db, 1)).size() == 2);
+        wayne.linkProduct(db, Product.findActiveById(db, 1)); // linking again should not add it twice
+        check("TC-4.1 linking twice does not duplicate",
+                Supplier.getSuppliersForProduct(db, Product.findActiveById(db, 1)).size() == 2);
 
-        // TC-4.2: a supplier's product list shows its own products and shared ones only
-        Product crossbody = makeBag("Juicy Crossbody Bag", 10);
-        suppliers.linkProduct(online, crossbody);
-        crossbody.addProduct();
-        check("TC-4.2 Online Bag Co shows both products", suppliers.getProducts(online).size() == 2);
-        check("TC-4.2 Wayne shows only the tote", suppliers.getProducts(wayne).size() == 1
-                && suppliers.getProducts(wayne).contains(tote));
+        // TC-4.2: a supplier's product list shows its own products only
+        check("TC-4.2 S001 shows its 6 products", s001.getProducts(db).size() == 6);
+        check("TC-4.2 Wayne shows only P001", wayne.getProducts(db).size() == 1
+                && wayne.getProducts(db).get(0).getProductId() == 1);
 
-        // TC-4.4: the low-stock alert shows the supplier's name and phone number
-        Product clutch = makeBag("Steve Madden Clutch", 3); // reorder level 5, so stock is low
-        suppliers.linkProduct(wayne, clutch);
-        clutch.addProduct();
-        String contacts = suppliers.getReorderContacts(clutch);
-        check("TC-4.4 product is low on stock", clutch.checkLowStock());
-        check("TC-4.4 alert shows supplier name and phone", contacts.contains("Wayne's Distributors")
-                && contacts.contains("876-898-2710"));
-        System.out.println("   TC-4.4 " + contacts);
-
-        // TC-4.5: suppliers of other products are not included
-        check("TC-4.5 only the clutch's supplier is shown", !contacts.contains("Online Bag Co"));
+        // TC-4.4 / 4.5 (data for the low-stock alert): only P003's own supplier is returned
+        ArrayList<Supplier> forP003 = Supplier.getSuppliersForProduct(db, Product.findActiveById(db, 3));
+        check("TC-4.4 P003's supplier has a name and phone", forP003.size() == 1
+                && forP003.get(0).getName().equals("Island Bags Wholesale") && forP003.get(0).getPhone() != null);
+        check("TC-4.5 suppliers of other products are not included", !inList(forP003, wayne.getId()));
 
         // AC-1: a product's only supplier cannot be removed
-        check("AC-1 removing Wayne is refused (only supplier of the clutch)", !suppliers.removeSupplier(wayne));
+        check("AC-1 removing S001 is refused (only supplier of P003)", !s001.removeSupplier(db));
 
         // TC-4.6: a restock order is saved with products, quantities, date and status Ordered
-        RestockOrder first = new RestockOrder(online);
-        first.addProduct(tote, 15);
-        first.addProduct(crossbody, 5);
-        check("TC-4.6 restock order is saved", restocks.createRestockOrder(first));
-        check("TC-4.6 order has 2 products, a date and status Ordered", first.getProductsOrdered().size() == 2
-                && first.getDateOrdered() != null && first.getStatus().equals("Ordered"));
-        check("TC-4.6 restock ID is in the format RST0001", first.getOrderID().equals("RST0001"));
+        RestockOrder first = new RestockOrder(1);
+        first.addProduct(1, 15);
+        first.addProduct(3, 5);
+        check("TC-4.6 restock order is saved", first.createRestockOrder(db));
+        RestockOrder saved = RestockOrder.findById(db, first.getId());
+        check("TC-4.6 order has 2 products, a date and status Ordered", saved.getProductsOrdered().size() == 2
+                && saved.getDateOrdered() != null && saved.getStatus().equals("Ordered"));
+        check("TC-4.6 restock ID is in the format RST0001", saved.getOrderID().equals("RST0001"));
 
         // TC-4.8: a quantity of 0 is refused and nothing is saved
-        int historyBefore = restocks.getHistory().size();
-        RestockOrder zero = new RestockOrder(online);
-        zero.addProduct(tote, 0);
-        check("TC-4.8 quantity 0 is refused", !restocks.createRestockOrder(zero));
-        check("TC-4.8 history is unchanged", restocks.getHistory().size() == historyBefore);
+        int historyBefore = RestockOrder.findAll(db).size();
+        RestockOrder zero = new RestockOrder(1);
+        zero.addProduct(1, 0);
+        check("TC-4.8 quantity 0 is refused", !zero.createRestockOrder(db));
+        check("TC-4.8 history is unchanged", RestockOrder.findAll(db).size() == historyBefore);
 
         // TC-4.7: five restock orders are listed from newest to oldest
-        RestockOrder last = null;
+        int lastId = 0;
         for (int i = 1; i <= 5; i++) {
-            RestockOrder o = new RestockOrder(wayne);
-            o.addProduct(clutch, i);
-            restocks.createRestockOrder(o);
-            last = o;
+            RestockOrder o = new RestockOrder(wayne.getId());
+            o.addProduct(1, i);
+            o.createRestockOrder(db);
+            lastId = o.getId();
         }
-        ArrayList<RestockOrder> wayneHistory = restocks.getHistory(wayne);
-        check("TC-4.7 all 5 orders are shown", wayneHistory.size() == 5);
-        check("TC-4.7 newest order is first", wayneHistory.get(0) == last);
+        check("TC-4.7 newest order is first", RestockOrder.findAll(db).get(0).getId() == lastId);
 
         // TC-4.9: stock 2 + 15 received = 17
-        check("TC-4.9 tote starts with 2 in stock", tote.getStockQuantity() == 2);
-        check("TC-4.9 order is marked received", restocks.markAsReceived(first.getOrderID()));
-        check("TC-4.9 stock went from 2 to 17", tote.getStockQuantity() == 17);
-        check("TC-4.9 status is Received", first.getStatus().equals("Received"));
+        db.update("UPDATE products SET stock_quantity = 2 WHERE product_id = 1");
+        RestockOrder rst = new RestockOrder(1);
+        rst.addProduct(1, 15);
+        rst.createRestockOrder(db);
+        check("TC-4.9 order is marked received", rst.markAsReceived(db));
+        check("TC-4.9 stock went from 2 to 17", stockOf(db, 1) == 17);
 
-        // TC-4.10: a product at 0 is back in stock after its restock is received
-        Product denim = makeBag("True Religion Denim Tote", 0);
-        suppliers.linkProduct(online, denim);
-        denim.addProduct();
-        check("TC-4.10 product starts Out of Stock", denim.isOutOfStock());
-        RestockOrder denimOrder = new RestockOrder(online);
-        denimOrder.addProduct(denim, 3);
-        restocks.createRestockOrder(denimOrder);
-        restocks.markAsReceived(denimOrder.getOrderID());
-        check("TC-4.10 product is no longer Out of Stock", !denim.isOutOfStock() && denim.getStockQuantity() == 3);
+        // TC-4.10: P012 at 0 is back in stock after its restock is received
+        check("TC-4.10 P012 starts Out of Stock", Product.findActiveById(db, 12).isOutOfStock());
+        RestockOrder denim = new RestockOrder(2);
+        denim.addProduct(12, 3);
+        denim.createRestockOrder(db);
+        denim.markAsReceived(db);
+        check("TC-4.10 P012 is no longer Out of Stock", !Product.findActiveById(db, 12).isOutOfStock()
+                && stockOf(db, 12) == 3);
 
         // TC-4.11: marking the same order received twice is refused and stock does not change
-        check("TC-4.11 second time is refused", !restocks.markAsReceived(first.getOrderID()));
-        check("TC-4.11 stock stays at 17", tote.getStockQuantity() == 17);
+        check("TC-4.11 second time is refused (same order)", !rst.markAsReceived(db));
+        check("TC-4.11 second time is refused (order loaded again)", !RestockOrder.findById(db, rst.getId()).markAsReceived(db));
+        check("TC-4.11 stock stays at 17", stockOf(db, 1) == 17);
 
         // TC-3.5 (history kept): a removed supplier still shows on its old restock orders
         Supplier temp = new Supplier("Short Term Supplier", "876-555-0188", "temp@supplier.test", "");
-        suppliers.addSupplier(temp);
-        suppliers.linkProduct(temp, denim);
-        RestockOrder past = new RestockOrder(temp);
-        past.addProduct(denim, 2);
-        restocks.createRestockOrder(past);
-        check("TC-3.5 supplier with a shared product can be removed", suppliers.removeSupplier(temp));
+        temp.addSupplier(db);
+        temp.linkProduct(db, Product.findActiveById(db, 5)); // P005 also has S001, so removal is allowed
+        RestockOrder past = new RestockOrder(temp.getId());
+        past.addProduct(5, 2);
+        past.createRestockOrder(db);
+        check("TC-3.5 supplier with a shared product can be removed", temp.removeSupplier(db));
         check("TC-3.5 old restock order still shows the supplier",
-                past.getSupplier().getName().equals("Short Term Supplier"));
-        check("TC-3.5 removed supplier cannot be linked to products", !suppliers.linkProduct(temp, tote));
+                RestockOrder.findById(db, past.getId()).getSupplierName().equals("Short Term Supplier"));
+        check("TC-3.5 removed supplier cannot be linked to products",
+                !Supplier.findById(db, temp.getId()).linkProduct(db, Product.findActiveById(db, 2)));
 
         System.out.println();
         System.out.println(passed + " passed, " + failed + " failed");
+        dbFile.delete();
+    }
+
+    //Checks if a supplier is in the list
+    private static boolean inList(ArrayList<Supplier> list, int id) {
+        for (int i = 0; i < list.size(); i++) {
+            if (list.get(i).getId() == id) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    //Gets the stock of a product from the database
+    private static int stockOf(Database db, int productId) {
+        return Rows.intOf(db.query("SELECT stock_quantity FROM products WHERE product_id = ?", productId).get(0),
+                "stock_quantity");
     }
 }

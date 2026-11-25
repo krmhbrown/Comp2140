@@ -42,6 +42,10 @@ public class ProductTest {
         check("raising stock does not alert", db.query("SELECT * FROM notifications").isEmpty());
         t.updateStock(db, 1);
         check("lowering stock to reorder level creates ONE alert", db.query("SELECT * FROM notifications WHERE product_id = " + id).size() == 1);
+        String alertText = String.valueOf(db.query("SELECT message FROM notifications WHERE product_id = " + id).get(0).get("message"));
+        check("alert names the supplier", alertText.contains("Island Bags Wholesale"));
+        check("alert shows the supplier phone number", alertText.contains("876-555-0301"));
+        check("alert leaves out suppliers not linked to the bag", !alertText.contains("Caribbean Fashion Imports"));
         t.updateStock(db, 0);
         check("second drop does not duplicate unread alert", db.query("SELECT * FROM notifications WHERE product_id = " + id).size() == 1);
         check("stock 0 shows out of stock", Product.findActiveById(db, id).isOutOfStock());
