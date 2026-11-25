@@ -11,9 +11,12 @@ import peakfinds.auth.SessionManager;
 import peakfinds.database.Database;
 import peakfinds.database.DatabaseInitializer;
 import peakfinds.routes.AuthRoutes;
+import peakfinds.routes.CustomerAccountRoutes;
 import peakfinds.routes.CustomerRoutes;
 import peakfinds.routes.DeliveryRoutes;
 import peakfinds.routes.OwnerRoutes;
+import peakfinds.routes.CustomerManagementRoutes; 
+import peakfinds.routes.CartRoutes;
 import peakfinds.web.Router;
 
 /**
@@ -57,6 +60,13 @@ public final class App {
         CustomerRoutes.register(ctx);   // customer home + placeholder pages
         DeliveryRoutes.register(ctx);   // bearer home + placeholder pages
 
+
+        // Customer Management and Cart
+        CustomerAccountRoutes.register(ctx);
+        CustomerManagementRoutes.register(ctx);
+        CartRoutes.register(ctx);
+
+        
         // Feature routes: each owner adds ONE line below once their routes class exists.
         // Registering the same URL as a placeholder replaces it. Example:
          peakfinds.routes.ProductRoutes.register(ctx);
