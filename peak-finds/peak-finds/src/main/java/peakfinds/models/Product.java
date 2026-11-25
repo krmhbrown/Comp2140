@@ -163,13 +163,31 @@ public class Product {
         }
     }
 
+    /** Who to reorder from: the active suppliers of this product with their phone numbers (uses Supplier). */
+    public String supplierContacts(Database db) {
+        List<Supplier> suppliers = Supplier.getSuppliersForProduct(db, this);
+        if (suppliers.isEmpty()) {
+            return "No supplier is linked to this product.";
+        }
+        List<String> parts = new ArrayList<>();
+        for (Supplier s : suppliers) {
+            parts.add(s.getName() + " (" + s.getPhone() + ")");
+        }
+        return "Reorder from: " + String.join("; ", parts) + ".";
+    }
+
+    /** The low-stock alert text including the supplier names and phone numbers (SR-4.3). */
+    public String lowStockAlertText(Database db) {
+        return lowStockMessage() + " " + supplierContacts(db);
+    }
+
     /** sendLowStockAlert(): adds one notification for the owner (not repeated while an unread one exists). */
     public void sendLowStockAlert(Database db) {
         boolean already = db.queryOne("SELECT 1 AS x FROM notifications WHERE kind = 'low_stock' AND product_id = ? AND is_read = 0",
                 productId).isPresent();
         if (!already) {
             db.insert("INSERT INTO notifications (kind, message, product_id) VALUES ('low_stock', ?, ?)",
-                    lowStockMessage(), productId);
+                    lowStockAlertText(db), productId);
         }
     }
 

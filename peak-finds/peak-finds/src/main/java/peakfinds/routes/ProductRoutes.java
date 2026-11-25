@@ -267,7 +267,7 @@ private Response details(Request req) {
         StringBuilder html = new StringBuilder("<h1>Low-stock alerts</h1><h2>Products at or below reorder level</h2><ul>");
         List<Product> low = storage.lowStockProducts();
         for (Product p : low) {
-            html.append("<li>").append(Html.esc(p.lowStockMessage())).append("</li>");
+            html.append("<li>").append(Html.esc(p.lowStockAlertText(ctx.db()))).append("</li>");
         }
         html.append("</ul>");
         if (low.isEmpty()) {
