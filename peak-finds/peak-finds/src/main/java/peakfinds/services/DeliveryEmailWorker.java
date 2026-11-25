@@ -39,7 +39,7 @@ public final class DeliveryEmailWorker {
         });
         executor.scheduleWithFixedDelay(() -> {
             try { processPending(); }
-            catch (RuntimeException e) { System.err.println("Delivery email worker: " + e.getClass().getSimpleName()); }
+            catch (Throwable e) { System.out.println("Delivery email worker: " + e); }
         }, 0, 2, TimeUnit.SECONDS);
         return executor;
     }
@@ -56,9 +56,10 @@ public final class DeliveryEmailWorker {
             String error = null;
             try {
                 sender.send(recipient, subject, Rows.str(row, "body"));
-            } catch (Exception ex) {
+            } catch (Throwable ex) {
                 // Avoid logging credentials or raw SMTP messages to the dashboard.
                 error = "Email transport failed (" + ex.getClass().getSimpleName() + ")";
+		System.out.println("Email error: " + ex);
             }
             final String failure = error;
             db.transaction(() -> {

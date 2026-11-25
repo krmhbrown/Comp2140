@@ -189,7 +189,7 @@ public final class OrderRoutes {
             // Only clear the bag after the order has been saved successfully.
             cart.clearCart(customerId);
         }
-        // TODO (SR invoice email): send order.generateInvoice() to the customer once an email sender exists.
+        peakfinds.services.OrderEmails.sendInvoice(ctx, Order.findById(ctx.db(), id));
         return Response.redirect("/orders/" + id + "?placed=1");
     }
 
@@ -246,7 +246,7 @@ public final class OrderRoutes {
             throw new BadRequestException("That order does not exist.");
         }
         o.cancelOrder(ctx.db(), req.session().userId());
-        // TODO (SR cancellation email): email the customer the cancellation once an email sender exists.
+        peakfinds.services.OrderEmails.sendCancellation(ctx, o);
         return Response.redirect((owner ? "/owner/orders/" : "/orders/") + o.getOrderId() + "?cancelled=1");
     }
 
