@@ -41,12 +41,24 @@ public final class CartRoutes {
                 case "removed" -> {
                     checkConfirmation(req);
                     cart.removeProduct(customerId, id(req.form("product_id")));
+                    if (cart.getItems(customerId).isEmpty()) {
+                        ctx.db().update("UPDATE carts SET payment_method = NULL WHERE customer_id = ?", customerId);
+                    }
                 }
                 case "cleared" -> {
                     checkConfirmation(req);
                     cart.clearCart(customerId);
+                    // Clear stale payment selections along with the bag.
+                    ctx.db().update("UPDATE carts SET payment_method = NULL WHERE customer_id = ?", customerId);
                 }
-                case "payment" -> cart.selectPaymentMethod(customerId, req.form("payment_method"));
+                case "payment" -> {
+                    cart.selectPaymentMethod(customerId, req.form("payment_method"));
+
+                    if ("checkout".equals(req.form("next"))) {
+                        cart.validateForCheckout(customerId);
+                        return Response.redirect("/orders/new?from_cart=1");
+                    }
+                }
                 default -> throw new ValidationException("Invalid cart action.");
             }
             return Response.redirect("/cart?feedback=" + action);
@@ -87,16 +99,23 @@ public final class CartRoutes {
         boolean validStock = items.stream().allMatch(item ->
                 item.active() && item.quantity() > 0 && item.quantity() <= item.availableStock());
         String checkoutControl;
-        if (items.isEmpty()) {
-            checkoutControl = "<p class=\"pf-bag-checkout-note\">Add a product before checking out.</p>";
-        } else if (!validStock) {
-            checkoutControl = "<p class=\"pf-bag-warning\">Update unavailable items or quantities before checkout.</p>";
-        } else if (!"Cash on Delivery".equals(selectedMethod) && !"Bank Transfer".equals(selectedMethod)) {
-            checkoutControl = "<p class=\"pf-bag-checkout-note\">Select and save a payment method to continue.</p>";
-        } else {
-            checkoutControl = "<a href=\"/orders/new?from_cart=1\" class=\"pf-bag-primary\">Proceed to Checkout</a>";
-        }
 
+        if (items.isEmpty()) {
+            checkoutControl =
+                    "<button type=\"button\" class=\"pf-bag-primary\" disabled "
+                    + "style=\"width:100%;margin-top:22px;opacity:.5;\">Proceed to Checkout</button>"
+                    + "<p class=\"pf-bag-checkout-note\">Add a product before checking out.</p>";
+        } else if (!validStock) {
+            checkoutControl =
+                    "<button type=\"button\" class=\"pf-bag-primary\" disabled "
+                    + "style=\"width:100%;margin-top:22px;opacity:.5;\">Proceed to Checkout</button>"
+                    + "<p class=\"pf-bag-warning\">Update unavailable items before checkout.</p>";
+        } else {
+            checkoutControl =
+                    "<button type=\"submit\" form=\"pf-bag-payment-form\" "
+                    + "name=\"next\" value=\"checkout\" class=\"pf-bag-primary\" "
+                    + "style=\"width:100%;min-height:49px;margin-top:22px;\">Proceed to Checkout</button>";
+        }
         StringBuilder html = new StringBuilder();
         html.append("""
             <section class="pf-bag-page">
@@ -216,10 +235,12 @@ public final class CartRoutes {
                 <div class="pf-bag-summary-total"><span>Items total</span><strong>J$%s</strong></div>
                 <p class="pf-bag-note">Delivery charges are not included in this item total.</p>
                 <h3>Payment Preference</h3>
-                <form method="post" action="/cart/payment" class="pf-bag-payment-form">
+                <form id="pf-bag-payment-form" method="post" action="/cart/payment" class="pf-bag-payment-form">
                   <input type="hidden" name="_csrf" value="%s">
                   <label for="payment_method">Select your payment method</label>
-                  <select id="payment_method" name="payment_method" required>
+                  <select id="payment_method" name="payment_method" required
+                    oninvalid="this.setCustomValidity('Please choose a payment method before checkout.')"
+                    onchange="this.setCustomValidity('')">
                     <option value="">Choose a method</option>
                     <option value="Cash on Delivery" %s>Cash on Delivery</option>
                     <option value="Bank Transfer" %s>Bank Transfer</option>
