@@ -62,6 +62,10 @@ public final class SessionManager {
         }
     }
 
+    public void destroyForUser(long userId) {
+        entries.values().removeIf(e -> e.session.userId() == userId);
+    }
+
     /** A random unguessable value (also used for anti-forgery tokens). */
     public static String randomToken() {
         byte[] bytes = new byte[32];

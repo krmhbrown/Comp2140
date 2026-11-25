@@ -229,3 +229,47 @@ WHEN NEW.is_active = 1 AND (SELECT COUNT(*) FROM products WHERE is_active = 1) >
 BEGIN
     SELECT RAISE(ABORT, 'The catalogue is limited to 100 active products.');
 END;
+
+-- ==================================================
+-- FEATURE 07: DELIVERY MANAGEMENT
+-- ==================================================
+
+-- Records payments collected by delivery bearers.
+CREATE TABLE IF NOT EXISTS delivery_payment_log (
+    payment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    delivery_id INTEGER NOT NULL
+        REFERENCES deliveries(delivery_id),
+
+    amount REAL NOT NULL CHECK (amount > 0),
+
+    recorded_by INTEGER NOT NULL
+        REFERENCES users(user_id),
+
+    recorded_at TEXT NOT NULL
+        DEFAULT (datetime('now', 'localtime'))
+);
+
+-- Stores customer delivery emails awaiting transmission.
+CREATE TABLE IF NOT EXISTS delivery_email_outbox (
+    email_id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    order_id INTEGER NOT NULL
+        REFERENCES orders(order_id),
+
+    recipient TEXT NOT NULL,
+
+    subject TEXT NOT NULL,
+
+    body TEXT NOT NULL,
+
+    state TEXT NOT NULL DEFAULT 'Pending'
+        CHECK (state IN ('Pending', 'Sent', 'Failed')),
+
+    created_at TEXT NOT NULL
+        DEFAULT (datetime('now', 'localtime'))
+);
+
+-- Improves the speed of pending email lookups.
+CREATE INDEX IF NOT EXISTS ix_delivery_email_pending
+ON delivery_email_outbox(state, email_id);
